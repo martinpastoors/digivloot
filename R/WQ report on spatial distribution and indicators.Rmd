@@ -1,0 +1,981 @@
+---
+output:
+  word_document:
+    reference_docx: ../report_template_v1.9.dotx
+---
+
+
+```{r setup, include=FALSE}
+
+# =====================================================================================================
+# Generate WQ analysis 2024
+# 
+# 22/12/2024 first coding
+#
+# TO DO: add EEZ intersection
+# =====================================================================================================
+
+knitr::opts_chunk$set(echo = FALSE,	message = FALSE,	warning = FALSE,	comment = "",	crop = TRUE )
+knitr::opts_chunk$set(fig.width=10) 
+
+options(dplyr.summarise.inform = FALSE)
+
+# Reset lists
+rm(list=ls())
+
+# Libraries
+library(rmarkdown)                   # note: requires knitr 1.21
+
+require(tidyverse, quietly=TRUE)     # combined package of dplyr, tidyr, ggplot, readr, purrr and tibble
+require(lubridate, quietly=TRUE)     # data handling
+require(reshape2, quietly=TRUE)      # reshaping data; e.g. cast
+require(RColorBrewer)                # colour schemes
+library(viridis)
+library(pander)
+library(cowplot)
+library(patchwork)                   # composer of plots
+
+library(captioner)                   # for captions
+tab_nums <- captioner::captioner(prefix = "Table " , levels=1, type=c("n"), infix=".")
+fig_nums <- captioner::captioner(prefix = "Figure ", levels=1, type=c("n"), infix=".")
+
+# Source all the utils
+source("../../flyshoot/R/FLYSHOOT utils.r")
+
+datadir   <- "C:/Users/MartinPastoors/Martin Pastoors/WQ - General/2024/data/export"
+rdatadir   <- "C:/Users/MartinPastoors/Martin Pastoors/WQ - General/2024/rdata"
+spatialdir <- "C:/DATA/RDATA"
+gisdir     <- "C:/DATA/GIS"
+
+rect_lr_sf  <- loadRData(file.path(spatialdir, "rect_lr_sf.RData"))
+world_mr_sf <- loadRData(file.path(spatialdir, "world_mr_sf.RData")) %>% sf::st_as_sf()
+eez_sf      <- 
+  loadRData(file.path(spatialdir, "eez_sf.RData")) %>% 
+  # sf::st_simplify(., preserveTopology = FALSE, dTolerance = 500) %>% 
+  rename(country = ISO_SOV1) %>% 
+  filter(country %in% c("DEU","DNK","GBR","NLD","BEL","FRA")) %>% 
+  mutate(class="eez")
+
+mpa_nl      <- loadRData(file.path(spatialdir, "MPANLD4.RData")) %>% 
+  filter(SITE_TYPE %in% c("N2000","KRM")) %>% 
+  rename(name = SITE_NAME) %>% 
+  mutate(country="NLD")
+
+ospar         <- loadRData(file.path(spatialdir, "ospar_sf.RData")) %>% 
+  filter(country %in% c("GBR","DEU","DNK","BEL")) %>% 
+  dplyr::select(country, name=orig_name, area_km2 = calc_area) %>% 
+  filter(name != "Southern North Sea")
+
+# ospar %>% filter(country=="GBR") %>% ggplot() + geom_sf() +   coord_sf(xlim=c(0,5), ylim=c(50,55))  
+# ospar %>% filter(country=="GBR") %>% filter(area_km2 > 10000) %>% View() 
+
+
+mpa <- bind_rows(mpa_nl, ospar) %>% 
+  bind_cols(data.frame(valid = sf::st_is_valid(.)))  %>% 
+  filter(valid == TRUE)
+
+asfis       <- loadRData(file.path(spatialdir, "asfis.RData"))
+
+
+bb <- 
+  readxl::read_excel("C:/Users/MartinPastoors/Martin Pastoors/NZO - General/WKC/vragen/2024_aanvullende_beschermde_gebieden/data/NZO gebied Bruine Bank.xlsx") %>% 
+  sf::st_as_sf(coords = c("lon","lat")) %>% 
+  sf::st_set_crs(4326) %>% 
+  group_by(SITE_NAME, SITE_TYPE) %>% 
+  summarize(do_union=FALSE) %>% 
+  sf::st_cast("POLYGON") %>% 
+  dplyr::mutate(area_km2 = as.integer(sf::st_area(.)/1000000)) 
+
+
+# mpa <- bind_rows(mpa, bb) %>% sf::st_make_valid()
+# sf::st_is_valid(mpa)
+# mpa[sf::st_is_valid(mpa)] %>% View()
+
+# german_wind_sf <- 
+#   loadRData(file.path(spatialdir, "20211123 german_wind_sf.RData")) %>% 
+#   lowcase() %>% 
+#   mutate(land="DE") %>% 
+#   filter(!grepl("reservation", type)) %>% 
+#   sf::st_transform(crs=4326) 
+
+
+# windparken_2023_sf <- 
+#   loadRData(file.path(spatialdir, "20230701 windparken_sf.RData")) %>% 
+#   filter(type %notin% c("Dismantled", "Development Zone", "Development Area")) %>% 
+#   filter(land != "DE") %>% 
+#   bind_rows(german_wind_sf)
+
+wind_compendium_sf <-
+  loadRData(file.path(spatialdir,"wind_compendium_sf.RData")) %>% 
+  filter(country %in% c("DE","DK","NL","BE", "FR", "UK")) %>% 
+  mutate(country = case_when(
+    country == "DE" ~ "DEU",
+    country == "NL" ~ "NLD",
+    country == "UK" ~ "GBR",
+    country == "DK" ~ "DNK",
+    country == "FR" ~ "FRA",
+    country == "BE" ~ "BEL"
+  )) %>% 
+  mutate(
+    statuscode = case_when (
+      simplified == 1 | statuscod == 1 ~ "existing",
+      simplified == 2 | statuscod == 2 ~ "licensed",
+      simplified == 3 | statuscod == 3 ~ "designated",
+      simplified == 4 | statuscod == 4 ~ "potential"
+    ),
+    statuscode = factor(statuscode, levels=c("existing", "licensed","designated","potential"))
+  )
+
+
+# wind        <- loadRData(file.path(spatialdir, "wind_sf.RData")) %>% 
+#   lowcase() %>% 
+#   filter(type %in% c("Bestaand","Goedgekeurd","Onder Constructie")) %>% 
+#   filter(land != "NL") %>% 
+#   dplyr::select(naam, land, type, geometry) %>% 
+#   mutate(code = substr(naam, 1, 12))
+  
+# windnl      <- loadRData(file.path(spatialdir, "20241023 nl_wind_nwp_sf.RData")) %>% 
+#   dplyr::select(code=windgebied, km2, naam=opmerking, plan=windgebie0, geometry) %>% 
+#   mutate(land = "NL")
+
+# windcomb <- bind_rows(wind, windnl)
+
+# Sabellaria
+folder <- "20241120 BruineBank Sabellaria"
+layer  <- 'BruineBankArea'
+layers <- list.files(path=file.path(gisdir, folder), pattern = "Survey")
+
+surveys <-
+  bind_rows(
+    sf::read_sf(file.path(gisdir, folder), layer="SurveyAreaA") %>% mutate(area="A"),
+    sf::read_sf(file.path(gisdir, folder), layer="SurveyAreaB") %>% mutate(area="B"),
+    sf::read_sf(file.path(gisdir, folder), layer="SurveyAreaF") %>% mutate(area="F"),
+    sf::read_sf(file.path(gisdir, folder), layer="SurveyAreaG") %>% mutate(area="G"),
+  ) %>% 
+  sf::st_transform(crs=4326) %>% 
+  sf::st_cast(., "POLYGON") %>% 
+  lowcase() 
+
+# require(rasterVis)
+# require(raster)
+# require(ggplot2)
+
+# map <- terra::rast(file.path(gisdir,"20241120 BruineBank Sabellaria", "B_allData_LGS100_rmNadir_30_geotiff.tif")) 
+# pts <- terra::as.points(map, na.rm=FALSE) 
+# pts <- terra::project(pts, "+proj=longlat +datum=WGS84")
+# terra::plot(map)
+
+# raster::crs(map) <- "+proj=longlat +datum=WGS84"
+# rasterVis::gplot(map) + geom_tile(aes(fill = value)) +
+#   scale_fill_gradient(low = 'white', high = 'black') +
+#   coord_equal()
+# str(map)
+# glimpse(map)
+# terra::geom(map)[, c("x", "y")]
+
+# wind and nature areas
+all_areas <-
+  bind_rows(
+    wind_compendium_sf %>% mutate(class="wind"),
+    eez_sf,
+    mpa %>% mutate(class="mpa") 
+  )
+
+
+# load weforsea and vcu data
+load(file = file.path(rdatadir,"weforsea.RData")); h_weforsea <- h; s_weforsea <- s
+load(file = file.path(rdatadir,"vcu.RData")); h_vcu <- h; s_vcu <- s
+
+s <- bind_rows(s_weforsea, s_vcu) %>% mutate(quarter=lubridate::quarter(startdate))
+h <- bind_rows(h_weforsea, h_vcu) %>% mutate(quarter=lubridate::quarter(startdate))
+
+prices <-
+  s %>% 
+  group_by(year, month, species) %>% 
+  summarise(price_m = mean(price, na.rm=TRUE)) %>% 
+  group_by(year, species) %>% 
+  mutate(price_y = mean(price_m, na.rm=TRUE)) 
+  
+# modify s with prices
+s <-
+  s %>% 
+  left_join(prices, by=c("year","month","species")) %>% 
+  mutate(price2 = case_when(
+    !is.na(price)                  ~ price,
+    is.na(price) & !is.na(price_m) ~ price_m,
+    is.na(price) & is.na(price_m)  ~ price_y
+  )) %>% 
+  dplyr::select(-c("price","price_m","price_y")) %>% 
+  rename(price=price2) %>% 
+  mutate(
+    price = as.numeric(price),
+    revenue = weight * price
+  )
+
+# s %>% filter(is.na(price)) %>% View()
+
+# prices %>% mutate(string = paste(year, stringr::str_pad(month,width=2, pad="0"))) %>% distinct(string) %>% View()
+# s <- bind_rows(s_weforsea, s_vcu) %>% filter(vessel == "KW14")
+# h <- bind_rows(h_weforsea, h_vcu) %>% filter(vessel == "KW14")
+
+# TEMPORARY
+# s <- s %>% filter(vessel=="KW-145")
+
+s_comb <-
+  s %>% 
+  group_by(vessel, trip, haul, startdate, year, quarter, month,
+        week, yday) %>%
+  summarise(
+    weight = sum(weight, na.rm=TRUE),
+    price  = mean(price, na.rm=TRUE),
+    revenue = sum(revenue, na.rm=TRUE),
+    lat     = mean(lat, na.rm=TRUE),
+    lon     = mean(lon, na.rm=TRUE)
+  ) 
+
+# catch overlap combined catches
+catch_overlap_comb <-
+  sf::st_intersection(
+    s_comb %>% sf::st_as_sf(coords = c("lon","lat"), remove = FALSE, crs=4326) ,
+    all_areas) 
+
+# calculate the scaling of plots
+xmin <- floor(2 * (min(s$lon, na.rm=TRUE)-0.5))/2 ;
+xmax <- ceiling(2 * (max(s$lon, na.rm=TRUE)+0.5))/2 ;
+ymin <- floor(2 * (min(s$lat, na.rm=TRUE)-0.5))/2
+ymax <- ceiling(2* (max(s$lat, na.rm=TRUE)+0.5))/2
+
+xlim <- c(xmin, xmax); ylim <- c(ymin, ymax)
+
+# sv %>% filter(as.Date(date) == ymd("2024-08-06")) %>% View()
+
+```
+
+
+**WQ 2024 analysis on spatial distributions and indicators**
+
+By: Martin Pastoors and Hans van Oostenbrugge
+
+Version: `r format(Sys.time(), '%d/%m/%Y')`
+
+```{r, echo=FALSE, out.width = "150px", fig.align="left", message=FALSE, warning=FALSE, cache=FALSE}
+  
+# knitr::include_graphics("../MPFF logo with text.png")
+p1 <- cowplot::ggdraw() +
+            cowplot::draw_image("../MPFF logo with text.png")
+p2 <- cowplot::ggdraw() +
+            cowplot::draw_image("../Wageningen University and Research.png")
+
+print(patchwork::wrap_plots(p1,patchwork::plot_spacer(), p2, ncol = 3) +
+        patchwork::plot_layout(widths  = c(2, 0.4, 4), 
+                               heights = c(4, 2, 2)))
+
+```
+
+# Introduction
+
+The spatial distribution of the Dutch bottomtrawl fleet is increasingly influenced by developments at sea that make traditional fishing areas less accessible or inaccessible to fishing vessels or that affect the presence or catchability of the most important target species. The most important developments are offshore wind development (and associated pipelines on or in the seabed) and protected areas. 
+
+The participating vessels have previously been equipped with tools to collect real-time information on catches and fishing positions. This made it possible to estimate catch compositions per haul and thereby creating detailed spatial maps of the importance of different fishing areas to the fishery. In future, this information will be linked to the research program operated by Wageningen Social and Economic Research (WSER) in which the effects of wind farms are mapped. 
+
+The aim of this paper is to show the content of the data and the potential added value to the existing information from current VMS-analyses.
+
+# Methods
+
+We collected highly detailed information on landings and fishing positions from participating vessels for the years 2023 and 2024. The information is disaggregated by individual fish-crates. This made it possible to estimate catch compositions per haul and thereby creating detailed spatial maps of the importance of different fishing areas to the fishery.
+
+Information on spatial plans on the North Sea (Netherlands and neighbouring countries) was derived from different sources, including Informatiehuis Marien (https://viewer.openearth.nl/ihm-viewer) and Compendium Greater North Sea (https://viewer.openearth.nl/compendium-greater-north-sea/). 
+
+In this first study we focused on the catch composition per haul in the bottom trawl fishery in the southern North Sea both in space and time. Participating skippers have contributed their data for this analysis and have been involved in the analysis of the data. This type of data may be used in future to supply the WSER project on the effects of offshore wind farms. 
+
+# Results
+
+Overview of sampling based on individual weight measurements
+The dataset obtained is the combination of the data from the position of the vessel and the electronic scale on board of the vessel. This scale is used to weigh the retained catches onboard the vessel, before they are stored. Numerous vessels have installed this equipment onboard as a measure to enhance fish quality throughout the processing chain.  
+
+The dataset consists of information from 2 years from participating vessels (KW14, KW45, KW145, SL42, UK64) and includes 196 trips in which over 15,000 hauls were made (Table 1). Based on the information from the electronic scales a total of 40 species were landed in this period. More than 50% of the retained catches consisted of plaice and sole, but also a wide variety of other species were caught in this fishery (Table 2). From the retained catches the volume is known, and the the value has been calculated using the average price per species and week.  
+
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "sampling1", 
+  level = 1, display = FALSE,
+  caption = "Overview of catch records 2023 and 2024")
+
+s %>% 
+  group_by(year, vessel, trip, species) %>% 
+  summarise(
+    nhauls = n_distinct(haul),
+    nobs   = n_distinct(id),
+    weight = sum(weight, na.rm=TRUE),
+    revenue = sum(revenue, na.rm=TRUE)
+  ) %>% 
+  group_by(year) %>% 
+  summarise(
+    nspecies = n_distinct(species),
+    ntrips   = n_distinct(vessel, trip),
+    nhauls   = sum(nhauls),
+    nobs     = sum(nobs),
+    weight   = sum(weight, na.rm=TRUE),
+    revenue   = sum(revenue, na.rm=TRUE)
+  ) %>% 
+  pivot_longer(names_to = "variable", values_to = "data", nspecies:revenue) %>% 
+  mutate(variable = factor(variable, levels =c("nspecies","ntrips","nhauls","nobs", "weight", "revenue"))) %>% 
+  reshape2::dcast(year ~ variable, sum, value.var = "data", margins="year") %>% 
+  pander::pandoc.table(.,
+               style = "simple",
+               split.tables=400, 
+               missing=".",
+               big.mark = ',',
+               round=c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+
+
+```
+
+_`r tab_nums("sampling1")`_
+
+\newpage
+
+**Catches by species (kg)**
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "catchbyspecies", 
+  level = 1, display = FALSE,
+  caption = "Sampled catch by species in 2023 and 2024")
+
+catch_summary %>% 
+  reshape2::dcast(species ~ year, sum, value.var = "weight", margins=c("year")) %>% 
+  rename(total = '(all)') %>% 
+  left_join(dplyr::select(asfis, species, englishname),
+            by="species") %>% 
+  relocate(englishname, .after=species) %>% 
+  arrange(desc(total)) %>% 
+  pander::pandoc.table(.,
+               style = "simple",
+               split.tables=400, 
+               missing=".",
+               big.mark = ',',
+               justify=c(rep("left",2), rep("right",3)),
+               round=c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+
+
+
+```
+
+_`r tab_nums("catchbyspecies")`_
+
+\newpage
+
+**Map of different areas in the North Sea**
+
+Figure 1 shows the patial distribution of the natura 2000 areas and offshore wind areas (OWF) locations as they are included in the analyses for this report. This will provide an example for the application of the newly achieved detailed dataset on landings. The map shows both existing and planned nature and OWF areas which cover a substantial proportion of the North Sea and the historic fishing grounds of the North Sea fishers. 
+
+```{r echo=FALSE, fig.align="center", fig.asp=0.9, message=FALSE, warning=FALSE}
+
+fig_nums(
+  name    = "map", 
+  level = 1, display = FALSE,
+  caption = "Base map with EEZs (dotted lines) and MPAs (red areas) and offshore wind areas with different status.")
+
+ggplot() +
+  theme_publication() +
+  # theme(legend.position = "none") +
+  
+  geom_sf(data=rect_lr_sf, fill=NA) +
+  geom_sf(data=world_mr_sf) +
+  geom_sf(data=eez_sf, linetype="dashed", fill=NA) +
+  geom_sf(data=mpa, colour="red", linewidth=0.1, fill="red", alpha=0.1) +
+  geom_sf(data=wind_compendium_sf, aes(fill=statuscode), alpha=0.5) +
+  # scale_alpha_discrete(range=c(0.1, 0.3, 0.6, 1.0)) +
+  coord_sf(xlim=xlim, ylim=ylim)  +
+  labs(fill="wind area") 
+  # facet_wrap(~statuscode, nrow=1)
+
+
+```
+
+_`r fig_nums("map")`_
+
+\newpage
+
+Overview of landings per haul (black) and in designated windareas (blue) and MPAs (red) during 2023 and 2024. Grey points are GPS positions.  
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.0, message=FALSE, warning=FALSE}
+
+fig_nums(
+  name    = "map1", 
+  level = 1, display = FALSE,
+  caption = "Landings (kg) of participating vessels in 'open' parts of the EEZs (black), MPAs (red) and offshore wind areas (blue). ")
+
+sv %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  filter(year >= 2023) %>% 
+  
+  ggplot() +
+  theme_publication() +
+  # theme(legend.position = "none") +
+  
+  geom_sf(data=rect_lr_sf, fill=NA) +
+  geom_sf(data=world_mr_sf) +
+  geom_sf(data=eez_sf, linetype="dashed", fill=NA) +
+  
+  # GPS points
+  geom_point(aes(x=lon, y=lat), colour="gray", size=0.1, alpha=0.2) +  
+  
+    # catches
+  geom_point(data = s_comb, 
+          aes(x=lon, y=lat, size=weight), 
+          colour="black", alpha=0.8, shape=21) +
+  
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="mpa"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkred") +
+
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="wind"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkblue") +
+  
+  geom_sf(data=mpa, colour="red", linewidth=0.1, fill="red", alpha=0.1) +
+  geom_sf(data=wind_compendium_sf, aes(fill=statuscode), alpha=0.5) +
+  labs(fill="wind area") +
+  
+  scale_size(range = c(0.2,3)) +
+  coord_sf(xlim=xlim, ylim=ylim)  +
+  facet_wrap(~year, ncol=2)
+
+
+```
+
+_`r fig_nums("map1")`_
+
+`r fig_nums("map1", display="cite")` shows the overall distribution of the retained catches in the fishing area, both in the open area and within the borders of the designated OWFs and N2000 areas. The plots show that the catches are obtained in a limited area and that the overlap between fishing areas and closed areas is partial. Moreover, the fishing patterns vary over the two years with more catches from the eastern channel in 2023 and an eastward shift in landings in the DK waters in 2024. The map also shows a high concentration of locations north of the Frisian Front in 2024 with seemingly lower landings than in 2023.    
+
+\newpage
+
+Quarterly patterns in landings are shown below.  
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+fig_nums(
+  name    = "mapq", 
+  level = 1, display = FALSE,
+  caption = "Landings (kg) of participating vessels by quarter in 'open' parts of the EEZs (black), MPAs (red) and offshore wind areas (blue). ")
+
+sv %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  filter(year >= 2023) %>% 
+  
+  ggplot() +
+  theme_publication() +
+  # theme(legend.position = "none") +
+  
+  geom_sf(data=rect_lr_sf, fill=NA) +
+  geom_sf(data=world_mr_sf) +
+  geom_sf(data=eez_sf, linetype="dashed", fill=NA) +
+  
+  # GPS points
+  geom_point(aes(x=lon, y=lat), colour="gray", size=0.1, alpha=0.2) +  
+  
+    # catches
+  geom_point(data = s_comb, 
+          aes(x=lon, y=lat, size=weight), 
+          colour="black", alpha=0.8, shape=21) +
+  
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="mpa"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkred") +
+
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="wind"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkblue") +
+  
+  geom_sf(data=mpa, colour="red", linewidth=0.1, fill="red", alpha=0.1) +
+  geom_sf(data=wind_compendium_sf, aes(fill=statuscode), alpha=0.5) +
+  labs(fill="wind area") +
+  
+  scale_size(range = c(0.2,3)) +
+  coord_sf(xlim=xlim, ylim=ylim)  +
+  facet_wrap(~quarter, ncol=2)
+
+
+```
+
+_`r fig_nums("mapq")`_
+
+As a result of the overlap of the MPAs, and designated OWF, a considerable part of the landings (table 3) and revenue (table 4) is obtained from fishing activities in these areas. Approximately 32% of the landings and revenues of these vessels originates from planned OWF and 4-5% originates from MPAs. It is also evident that the UK fishing grounds are important to these vessels as around 27% of the landings and revenue are obtained in UK waters. 
+
+
+```{r echo=FALSE, fig.align="center", fig.asp=0.8, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "landingsbyzone", 
+  level = 1, display = FALSE,
+  caption = "Total landings by zone in 2023 and 2024 (kg). Open refers to the part of the EEZ that is not covered by either MPAs of offshore wind areas")
+
+t_mpa <-
+  catch_overlap_comb %>%
+  filter(class == "mpa") %>% 
+  group_by(year, country, class) %>% 
+  summarise(
+    weight = sum(weight, na.rm=TRUE),
+    revenue = sum(revenue, na.rm=TRUE)
+  ) %>% 
+  sf::st_drop_geometry() %>% 
+  pivot_longer(names_to = "variable", values_to = "data", weight:revenue)
+
+t_wind <-
+  catch_overlap_comb %>%
+  filter(class == "wind") %>% 
+  group_by(year, country, class) %>% 
+  summarise(
+    weight = sum(weight, na.rm=TRUE),
+    revenue = sum(revenue, na.rm=TRUE)
+  ) %>% 
+  sf::st_drop_geometry() %>% 
+  pivot_longer(names_to = "variable", values_to = "data", weight:revenue)
+
+t_eez <-
+  catch_overlap_comb %>%
+  filter(class == "eez", country != "FRA") %>% 
+  group_by(year, country, class) %>% 
+  summarise(
+    weight = sum(weight, na.rm=TRUE),
+    revenue = sum(revenue, na.rm=TRUE)
+  ) %>% 
+  sf::st_drop_geometry() %>% 
+  pivot_longer(names_to = "variable", values_to = "data", weight:revenue)
+
+t_final <-
+  bind_rows(t_eez, t_mpa, t_wind) %>% 
+  pivot_wider(names_from = "class", values_from = "data") %>% 
+  mutate(open = eez - mpa - wind) %>% 
+  dplyr::select(-eez) %>% 
+  tidyr::pivot_longer(names_to = "area", values_to = "data", mpa:open) %>% 
+  mutate(area = factor(area, levels = c("open","wind","mpa"))) %>% 
+  group_by(variable) %>% 
+  mutate(prop = data / sum(data, na.rm=TRUE))
+
+
+myvar <- "weight"
+
+# numbers
+
+bind_cols(
+  
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country, area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(country="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data),
+  ),
+  
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(area="total") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by() %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(area="total") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data) %>% 
+      mutate(country="all")
+  ) %>% 
+  dplyr::select(-country),
+) %>% 
+pander::pandoc.table(.,
+             style = "simple",
+             split.tables=400, 
+             big.mark = ',',
+             justify="right",
+             missing=".",
+             round=c(0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+  
+
+# percentages  
+bind_cols(
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country, area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>%
+      mutate(country="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc),
+  ),
+  
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>%
+      mutate(area="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by() %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>%
+      mutate(area="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc)
+    ) %>% 
+    ungroup() %>% 
+    dplyr::select(-country)
+) %>% 
+
+pander::pandoc.table(.,
+             style = "simple",
+             split.tables=400, 
+             big.mark = ',',
+             justify="right",
+             missing=".",
+             round=c(0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+
+
+```
+
+_`r tab_nums("landingsbyzone")`_
+
+```{r echo=FALSE, fig.align="center", fig.asp=0.8, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "revenuebyzone", 
+  level = 1, display = FALSE,
+  caption = "Total revenue by zone in 2023 and 2024 (Euro). Open refers to the part of the EEZ that is not covered by either MPAs of offshore wind areas")
+
+myvar <- "revenue"
+
+# numbers
+
+bind_cols(
+  
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country, area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(country="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data),
+  ),
+  
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(area="total") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by() %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(area="total") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = data) %>% 
+      mutate(country="all")
+  ) %>% 
+  dplyr::select(-country),
+) %>% 
+pander::pandoc.table(.,
+             style = "simple",
+             split.tables=400, 
+             big.mark = ',',
+             justify="right",
+             missing=".",
+             round=c(0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+  
+
+# percentages  
+bind_cols(
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country, area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(area) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>%
+      mutate(country="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc),
+  ),
+  
+  bind_rows(
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by(country) %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>%
+      mutate(area="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc),
+    t_final %>%    
+      filter(variable == myvar) %>% 
+      group_by() %>% 
+      summarise(data=sum(data, na.rm=TRUE)) %>% 
+      group_by() %>% 
+      mutate(perc = scales::percent(data / sum(data, na.rm=TRUE),  accuracy=0.1)) %>% 
+      dplyr::select(-data) %>%
+      mutate(area="all") %>% 
+      tidyr::pivot_wider(names_from = area, values_from = perc)
+    ) %>% 
+    ungroup() %>% 
+    dplyr::select(-country)
+) %>% 
+
+pander::pandoc.table(.,
+             style = "simple",
+             split.tables=400, 
+             big.mark = ',',
+             justify="right",
+             missing=".",
+             round=c(0,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+
+
+
+```
+
+_`r tab_nums("revenuebyzone")`_
+
+\newpage
+
+**Zoomed-in view of the area around the Brown Bank  (by quarter)** 
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+fig_nums(
+  name    = "map2", 
+  level = 1, display = FALSE,
+  caption = "Landings (kg) of participating vessels in 'open' parts of the EEZs (black), MPAs (red) and designated wind areas (blue). Zoomed in to the area around the Brown Bank")
+
+sv %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  filter(year >= 2023) %>% 
+  
+  ggplot() +
+  theme_publication() +
+  # theme(legend.position = "none") +
+  
+  geom_sf(data=rect_lr_sf, fill=NA) +
+  geom_sf(data=world_mr_sf) +
+  geom_sf(data=eez_sf, linetype="dashed", fill=NA) +
+  
+  # GPS points
+  geom_point(aes(x=lon, y=lat), colour="gray", size=0.1, alpha=0.2) +  
+  
+    # catches
+  geom_point(data = s_comb, 
+          aes(x=lon, y=lat, size=weight), 
+          colour="black", alpha=0.8, shape=21) +
+  
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="mpa"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkred") +
+
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="wind"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkblue") +
+  
+  geom_sf(data=mpa, colour="red", linewidth=0.1, fill="red", alpha=0.1) +
+  geom_sf(data=wind_compendium_sf, aes(fill=statuscode), alpha=0.5) +
+  labs(fill="wind area") +
+  
+  scale_size(range = c(0.2,3)) +
+  coord_sf(xlim=c(2,5), ylim=c(52,54))  +
+  facet_wrap(~quarter, ncol=2)
+
+
+```
+
+_`r fig_nums("map2")`_
+
+The distribution maps from the brown bank show a shift in the retained catches from the open UK waters in 2023 to the designated OFL locations and the Dutch part of the southern North Sea in 2024. It can also be noted that the retained catches from the large N2000 area (brown bank) are taken from a relatively small strip in the area, which is exploited in both years, whereas the landings from other areas seem to be much more dynamic. Moreover, this information shows the in some areas the fishers are always fishing in the same direction and location,  whereas in other areas the trawling locations (grey areas of VMS positions) are much more spread out. 
+
+\newpage
+
+**Zoomed-in view of the German Bight (by quarter)**
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+fig_nums(
+  name    = "map3", 
+  level = 1, display = FALSE,
+  caption = "Landings (kg) of participating vessels in 'open' parts of the EEZs (black), MPAs (red) and designated wind areas (blue). Zoomed in to the German Bight")
+
+sv %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  filter(year >= 2023) %>% 
+  
+  ggplot() +
+  theme_publication() +
+  # theme(legend.position = "none") +
+  
+  geom_sf(data=rect_lr_sf, fill=NA) +
+  geom_sf(data=world_mr_sf) +
+  geom_sf(data=eez_sf, linetype="dashed", fill=NA) +
+  
+  # GPS points
+  geom_point(aes(x=lon, y=lat), colour="gray", size=0.1, alpha=0.2) +  
+  
+    # catches
+  geom_point(data = s_comb, 
+          aes(x=lon, y=lat, size=weight), 
+          colour="black", alpha=0.8, shape=21) +
+  
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="mpa"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkred") +
+
+  geom_sf(data = catch_overlap_comb %>% filter(year >= 2023, class=="wind"),
+             aes(size=weight),
+             alpha=0.8, shape=21, colour="darkblue") +
+  
+  geom_sf(data=mpa, colour="red", linewidth=0.1, fill="red", alpha=0.1) +
+  geom_sf(data=wind_compendium_sf, aes(fill=statuscode), alpha=0.5) +
+  labs(fill="wind area") +
+  
+  scale_size(range = c(0.2,3)) +
+  coord_sf(xlim=c(5, 9), ylim=c(54,57))  +
+  facet_wrap(~quarter, ncol=2)
+
+
+```
+
+_`r fig_nums("map3")`_
+
+The plots of the northern part of the North Sea show the shift in fishing area of these vessels to more eastward fishing grounds. It also shows that fishing takes place in a north south direction and the retained catches are registered at the end of the haul (see patterns in the most eastern fishing location in DK waters in 2024). 
+
+The overviews also show exploratory trips to the North part of the DK waters. In 2023 these locations were apparently productive enough to spend more time in this area, whereas in 2024 the vessel just went there once and did not come back. This information on (apparent low) fishing success in specific hauls in relatively unfished areas is of large importance for the development of knowledge on fishing behavior and fishing patterns. 
+
+The current spatial information on fisheries is estimated from total retained catches, and these are distributed evenly over the VMS fishing locations (Deetman et al., 2024). This means that the retained catches per fishing track are assumed equal. Table 5 shows that for the vessels included in this first analyses there is considerable variation in retained catches among the hauls within a trip. For the three species analysed the average standard deviation was around 47% of the average retained landings weight. This means that on average, the retained landings in each haul were 47% higher or lower than the average landings of all hauls in the trip. Between the trips there is also large variation: in some trips the retained catches for all hauls are almost identical (low variance between hauls) whereas for other trips the variance between hauls is much higher (in some instance even higher than the average retained catches of the trip). This means that the added value of these detailed data is considerable. 
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "relstdev", 
+  level = 1, display = FALSE,
+  caption = "Descriptive statistics of the variation (standard deviation) of plaice, sole and squid in retained catches among hauls within a trip, for the two-year period and all participating vessels")
+
+s %>% 
+  filter(species %in% c("SOL","PLE", "SQR")) %>% 
+  group_by(vessel, year, trip, haul, species) %>% 
+  summarise(weight = sum(weight, na.rm=TRUE)) %>% 
+  group_by(vessel, year, trip, species) %>% 
+  summarise(
+    meanweight = mean(weight, na.rm=TRUE),
+    stdev      = sd(weight, na.rm=TRUE)
+  ) %>% 
+  mutate(relstdev = stdev/meanweight) %>% 
+  group_by(species) %>% 
+  summarise(
+    meanrelstdev = mean(relstdev, na.rm=TRUE),
+    minrelstdev  = min(relstdev, na.rm=TRUE),
+    maxrelstdev  = max(relstdev, na.rm=TRUE),
+    lower025relstdev = quantile(relstdev,probs=c(.025), na.rm=TRUE),
+    upper975relstdev = quantile(relstdev,probs=c(.975), na.rm=TRUE)
+  ) %>% 
+  pander::pandoc.table(.,
+               style = "simple",
+               split.tables=400, 
+               missing=".",
+               big.mark = ',',
+               round=c(0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+
+
+
+
+```
+
+_`r tab_nums("relstdev")`_
+
+# Discussion
+
+The highly detailed information on catch per haul that is visualized in this report is based on a limited number of vessels that have coupled their scales with their GPS systems. This can be considered as a first step in the digitalization of the bottom trawl fleet, where additional information may in future be expected from coupling fuel sensors and specific fishing equipment sensors (e.g. Marelec pull sensor). The currently available information could already be compared to the type of information that is available from the coupling of VMS and logbook data. This comparison has not been carried out at this stage but is expected to be carried out in the near future. 
+
+Given that the results are based on a limited number of vessels, the results cannot be considered representative of any part of the Dutch bottom trawl fleet. Currently, we are only able to show the potential of using such data, not yet in a practical application for the spatial use of different areas by different fleet segments. This potential lays in the higher accuracy of the estimation of the retained landings in specific locations. As for now all spatial analyses are based on the assumption that the retained landing per haul is equal within a trip. For the estimation of the retained catches and their value for large areas this approach is useful as it concerns the total of large amounts of hauls and the uncertainty in the estimate of the total landings from the area is lowered by the high amount of data points (hauls) in the area. However, the method causes bias in small areas with either very low or very high retained catches as these are compensated by lower/higher catches in other hauls in the same trip. The current data includes the detail to distinguish the low resolution spatial and temporal patterns which will make analyses of fishing behavior more meaningful and the estimates of the value of specific areas much more precise.
+
+In order to match the given location in the dataset to the location at which the fish were really caught some extra comparative analyses should be done, but these data provide a big step forward in spatial analyses of fishing behavior.
+
+
+# References
+
+Deetman, B., M. Robert, M. Kraan and K. G. Hamon (2024). Waarde (zoek)gebieden wind op zee voor de visserij. Inzicht in de sociaal-economische waarde van gebieden, die geïdentificeerd zijn in de Partiële Herziening van het Programma Noordzee 2022-2027, voor de Nederlandse visserij. Wageningen, Wageningen Economic Research. Rapport 2024-033: 84
+
+
+
+```{r eval=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE, include=FALSE}
+
+# NOT SHOWN 
+
+s %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  mutate(month = lubridate::month(date)) %>% 
+  
+  filter(year >= 2023) %>% 
+  filter(species=="COD") %>%   
+  ggplot() +
+  theme_publication() +
+  # theme(legend.position = "none") +
+  
+  geom_sf(data=rect_lr_sf, fill=NA) +
+  geom_sf(data=world_mr_sf) +
+
+  # catches
+  geom_point( 
+          aes(x=lon, y=lat, size=weight), 
+          colour="black", alpha=0.8, shape=21) +
+  
+  scale_size(range = c(0.2,3)) +
+  coord_sf(xlim=xlim, ylim=ylim)  +
+  facet_wrap(~month, ncol=4)
+
+
+```

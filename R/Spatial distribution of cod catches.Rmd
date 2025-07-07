@@ -1,0 +1,250 @@
+---
+output:
+  word_document:
+    reference_docx: ../report_template_v1.9.dotx
+---
+
+
+```{r setup, include=FALSE}
+
+# =====================================================================================================
+# Spatial distribution of cod catches
+# 
+# 22/12/2024 first coding
+#
+# =====================================================================================================
+
+knitr::opts_chunk$set(echo = FALSE,	message = FALSE,	warning = FALSE,	comment = "",	crop = TRUE )
+knitr::opts_chunk$set(fig.width=10) 
+
+options(dplyr.summarise.inform = FALSE)
+
+# Reset lists
+rm(list=ls())
+
+# Libraries
+library(rmarkdown)                   # note: requires knitr 1.21
+
+require(tidyverse, quietly=TRUE)     # combined package of dplyr, tidyr, ggplot, readr, purrr and tibble
+require(lubridate, quietly=TRUE)     # data handling
+require(reshape2, quietly=TRUE)      # reshaping data; e.g. cast
+require(RColorBrewer)                # colour schemes
+library(viridis)
+library(pander)
+library(cowplot)
+library(patchwork)                   # composer of plots
+
+library(captioner)                   # for captions
+tab_nums <- captioner::captioner(prefix = "Table " , levels=1, type=c("n"), infix=".")
+fig_nums <- captioner::captioner(prefix = "Figure ", levels=1, type=c("n"), infix=".")
+
+# Source all the utils
+source("../../flyshoot/R/FLYSHOOT utils.r")
+
+datadir   <- "C:/Users/MartinPastoors/Martin Pastoors/WQ - General/2025/data"
+rdatadir   <- "C:/Users/MartinPastoors/Martin Pastoors/WQ - General/2025/rdata"
+spatialdir <- "C:/DATA/RDATA"
+gisdir     <- "C:/DATA/GIS"
+
+rect_lr_sf  <- loadRData(file.path(spatialdir, "rect_lr_sf.RData")) %>% rename(rect=ICESNAME)
+world_mr_sf <- loadRData(file.path(spatialdir, "world_mr_sf.RData")) %>% sf::st_as_sf()
+eez_sf      <- 
+  loadRData(file.path(spatialdir, "eez_sf.RData")) %>% 
+  # sf::st_simplify(., preserveTopology = FALSE, dTolerance = 500) %>% 
+  rename(country = ISO_SOV1) %>% 
+  filter(country %in% c("DEU","DNK","GBR","NLD","BEL","FRA")) %>% 
+  mutate(class="eez")
+
+asfis       <- loadRData(file.path(spatialdir, "asfis.RData"))
+
+e1 <- loadRData("C:/Users/MartinPastoors/Martin Pastoors/FLYSHOOT - General/rdata/elog.RData") 
+
+filelist <- list.files(
+  path=file.path(datadir),
+  pattern="kabeljauw",
+  recursive=TRUE,
+  full.names = TRUE)
+
+if(!is_empty(filelist)){
+  
+  m <- data.frame(stringsAsFactors = FALSE)
+  
+  i <- 1
+  for (i in 1:length(filelist)) {
+    
+    m  <-
+      bind_rows(
+        m,
+        readxl::read_excel(filelist[i], 
+                           sheet = "landed catch details table",
+                           col_names=TRUE, col_types="text",
+                           .name_repair =  ~make.names(., unique = TRUE))  %>% 
+          data.frame() %>% 
+          lowcase() %>% 
+          rename(
+            rect = icesrectangle,
+            vessel = vesselhullnumber,
+            division = faozone,
+            gear = geartype,
+            # landings = catchweight,
+            weight = catchweight,
+            catchdate = activitydate,
+            economiczone = economicalzone,
+            species = fishspecie
+          ) %>% 
+          
+          {if(any(grepl("latitide",names(.)))) {rename(., lat = latitide)} else{.}} %>% 
+          {if(any(grepl("latitude",names(.)))) {rename(., lat = latitude)} else{.}} %>% 
+          {if(any(grepl("longitude",names(.)))) {rename(., lon = longitude)} else{.}} %>% 
+          {if(any(grepl("haulid",names(.)))) {rename(., haul = haulid)} else{.}} %>% 
+          
+          mutate(across (any_of(c("boxes", "meshsize", "haul")),
+                         as.integer)) %>%
+          mutate(across (any_of(c("catchdate", "departuredate","arrivaldate", "auctiondate", 
+                                  "landingdate", "weight", "lat", "lon", "conversionfactor")),
+                         as.numeric)) %>%
+          mutate(across (any_of(c("catchdate", "departuredate","arrivaldate", "auctiondate",
+                                  "landingdate")), 
+                         ~excel_timezone_to_utc(., timezone="Europe/Amsterdam"))) %>% 
+          
+          mutate(date   = as.Date(catchdate)) %>% 
+          mutate(economiczone = ifelse(economiczone == "GBR", economiczone, "XEU")) %>% 
+          {if(any(grepl("haul",names(.)))) {mutate(., haul = haul - min(haul, na.rm=TRUE)+1)} else{.}} %>% 
+          
+          mutate(vessel = gsub("-","", vessel)) %>% 
+          mutate(vessel = gsub("\\.","", vessel)) %>% 
+          
+          mutate(
+            year       = lubridate::year(date),
+            quarter    = lubridate::quarter(date),
+            month      = lubridate::month(date),
+            week       = lubridate::week(date),
+            yday       = lubridate::yday(date))
+        
+        # left_join(rect_df, by="rect") %>% 
+        # mutate(
+        #   lat = lat + 0.25,
+        #   lon = lon + 0.5
+        # ) %>% 
+        
+      )
+    
+  } # end of pefa elog for loop
+  
+} # end of not empty filelist
+
+# janitor::compare_df_cols(e1, m) %>% View()
+
+e <-
+  bind_rows(e1, m) %>% 
+  left_join(rect_lr_sf, by="rect") %>% 
+  sf::st_as_sf()
+
+# calculate the scaling of plots
+bb <- sf::st_bbox(e)
+xmin <- bb[1]
+xmax <- bb[3] ;
+ymin <- bb[2]
+ymax <- bb[4]
+xlim <- c(xmin, xmax); ylim <- c(ymin, ymax)
+
+# s %>% filter(species == "COD") %>% View()
+
+```
+
+
+**Spatial distribution of cod catches**
+
+By: Martin Pastoors
+
+Version: `r format(Sys.time(), '%d/%m/%Y')`
+
+```{r eval=FALSE, fig.align="left", message=FALSE, warning=FALSE, cache=FALSE, include=FALSE, out.width="150px"}
+  
+# knitr::include_graphics("../MPFF logo with text.png")
+p1 <- cowplot::ggdraw() +
+            cowplot::draw_image("../MPFF logo with text.png")
+p2 <- cowplot::ggdraw() +
+            cowplot::draw_image("../Wageningen University and Research.png")
+
+print(patchwork::wrap_plots(p1,patchwork::plot_spacer(), p2, ncol = 3) +
+        patchwork::plot_layout(widths  = c(2, 0.4, 4), 
+                               heights = c(4, 2, 2)))
+
+```
+
+# Introduction
+
+# Methods
+
+# Results
+
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "sampling1", 
+  level = 1, display = FALSE,
+  caption = "Overview of cod records 2023 and 2024")
+
+e %>% 
+  filter(species == "COD") %>% 
+  group_by(year, species) %>% 
+  summarise(weight = sum(weight, na.rm=TRUE)) 
+
+```
+
+_`r tab_nums("sampling1")`_
+
+\newpage
+
+Overview of cod landings per rect and per month  
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.0, message=FALSE, warning=FALSE}
+
+fig_nums(
+  name    = "map1", 
+  level = 1, display = FALSE,
+  caption = "Landings (kg) of participating vessels in 'open' parts of the EEZs (black), MPAs (red) and offshore wind areas (blue). ")
+
+e %>% 
+  mutate(year = lubridate::year(date)) %>% 
+  filter(year == 2024) %>% 
+  group_by(species, year, month, rect) %>% 
+  summarise(
+    weight = sum(weight, na.rm=TRUE),
+    ndays  = n_distinct(vessel, date)) %>% 
+  ungroup() %>% 
+  mutate(weightperday = weight / ndays) %>% 
+  # mutate(., weightperday_interval = cut(weightperday, 
+  #           scales::trans_breaks("sqrt", function(x) x ^ 2)(c(0, max(weightperday, na.rm=TRUE))), 
+  #                                dig.lab=10 ) ) %>% 
+  mutate(., weightperday_interval = cut(weightperday, 
+            breaks=c(0,20,50,100,1000,10000), 
+                                 dig.lab=10 ) ) %>% 
+
+  sf::st_as_sf() %>% 
+  
+  # filter(is.na(weightperday_interval)) %>% View()
+
+  
+  ggplot() +
+  theme_publication() +
+  # theme(legend.position = "none") +
+  
+  geom_sf(data=rect_lr_sf, fill=NA) +
+  geom_sf(data=world_mr_sf) +
+  geom_sf(data=eez_sf, linetype="dashed", fill=NA) +
+  
+  # catches
+  geom_sf(aes(fill=weightperday_interval), alpha=0.8) +
+  
+  coord_sf(xlim=xlim, ylim=ylim)  +
+  labs(fill="weight/day/vessel (kg)", title="Cod landings 2024 per day and per vessel of selected vessels") +
+  facet_wrap(~month, ncol=4)
+
+
+```
+
+_`r fig_nums("map1")`_
+

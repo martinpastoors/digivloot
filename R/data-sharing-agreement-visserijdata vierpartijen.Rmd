@@ -1,0 +1,395 @@
+---
+title: "Untitled"
+author: "Martin Pastoors"
+date: "2025-04-24"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# DATA SHARING AGREEMENT VISSERIJDATA NEDERLAND
+## VIER-PARTIJEN MODEL
+
+## PARTIJEN:
+
+**1. [NAAM DATA EIGENAAR]**, gevestigd te [ADRES], ingeschreven in het handelsregister van de Kamer van Koophandel onder nummer [KVK NUMMER], te dezen rechtsgeldig vertegenwoordigd door [NAAM], [FUNCTIE], hierna te noemen: "Data Eigenaar";
+
+en
+
+**2. [NAAM PRIMAIRE REPOSITORY]**, gevestigd te [ADRES], ingeschreven in het handelsregister van de Kamer van Koophandel onder nummer [KVK NUMMER], te dezen rechtsgeldig vertegenwoordigd door [NAAM], [FUNCTIE], hierna te noemen: "Primaire Repository";
+
+en
+
+**3. [NAAM SECUNDAIRE REPOSITORY]**, gevestigd te [ADRES], ingeschreven in het handelsregister van de Kamer van Koophandel onder nummer [KVK NUMMER], te dezen rechtsgeldig vertegenwoordigd door [NAAM], [FUNCTIE], hierna te noemen: "Secundaire Repository";
+
+en
+
+**4. [NAAM DATA ONTVANGER]**, gevestigd te [ADRES], ingeschreven in het handelsregister van de Kamer van Koophandel onder nummer [KVK NUMMER], te dezen rechtsgeldig vertegenwoordigd door [NAAM], [FUNCTIE], hierna te noemen: "Data Ontvanger";
+
+hierna gezamenlijk te noemen: "Partijen" en ieder afzonderlijk: "Partij".
+
+## OVERWEGENDE DAT:
+
+A. Data Eigenaar rechthebbende is op visserijdata zoals gedefinieerd in deze overeenkomst;
+
+B. Primaire Repository fungeert als de primaire beheerder en opslagplaats voor de visserijdata;
+
+C. Secundaire Repository fungeert als back-up en alternatieve distributiekanaal voor de visserijdata;
+
+D. Data Ontvanger de visserijdata wenst te ontvangen en te gebruiken voor de in deze overeenkomst genoemde doeleinden;
+
+E. Partijen in deze overeenkomst de voorwaarden wensen vast te leggen waaronder de visserijdata wordt verzameld, opgeslagen, gedeeld en gebruikt;
+
+## KOMEN OVEREEN ALS VOLGT:
+
+### Artikel 1. Definities
+
+In deze overeenkomst worden de volgende begrippen met een beginhoofdletter gebruikt, zowel in enkelvoud als in meervoud. Onder deze begrippen wordt verstaan:
+
+1.1 **Visserijdata**: alle gegevens betreffende visserijactiviteiten, waaronder begrepen maar niet beperkt tot vangstgegevens, vergunningen, quotagegevens, locatiegegevens, gegevens over visserijtechnieken, vaartuiggegevens, en andere voor de visserijsector relevante gegevens die in het kader van deze overeenkomst worden gedeeld.
+
+1.2 **Persoonsgegeven**: alle informatie over een geïdentificeerde of identificeerbare natuurlijke persoon zoals gedefinieerd in artikel 4 sub 1 van de Algemene Verordening Gegevensbescherming (AVG).
+
+1.3 **Verwerken/Verwerking**: een bewerking of een geheel van bewerkingen met betrekking tot Visserijdata, zoals gedefinieerd in artikel 4 sub 2 van de AVG.
+
+1.4 **Primair Repository Systeem**: het door Primaire Repository beheerde technische systeem waarin de Visserijdata primair wordt opgeslagen, beheerd en toegankelijk wordt gemaakt.
+
+1.5 **Secundair Repository Systeem**: het door Secundaire Repository beheerde technische systeem waarin de Visserijdata als back-up wordt opgeslagen en dat als alternatief distributiekanaal fungeert.
+
+1.6 **Data Governance Framework**: het geheel aan procedures, protocollen en standaarden die van toepassing zijn op de verwerking van de Visserijdata door alle Partijen in deze overeenkomst.
+
+1.7 **Toepasselijke Wetgeving**: alle toepasselijke wet- en regelgeving op het gebied van gegevensbescherming, waaronder in ieder geval de AVG, de Uitvoeringswet AVG, de Visserijwet 1963, en alle relevante EU-regelgeving waaronder het Gemeenschappelijk Visserijbeleid.
+
+### Artikel 2. Doel en Reikwijdte
+
+2.1 Data Eigenaar zal aan Primaire Repository Visserijdata verstrekken, die vervolgens door Primaire Repository aan Secundaire Repository en door beide repositories aan Data Ontvanger ter beschikking zal worden gesteld voor de volgende doeleinden:
+   - [Specificeer concreet doel, bijvoorbeeld: "Voor het analyseren van vangstgegevens ter verbetering van het beheer van visbestanden in de Noordzee"]
+   - [Specificeer concreet doel, bijvoorbeeld: "Voor het uitvoeren van wetenschappelijk onderzoek naar duurzame visserijmethoden"]
+
+2.2 De Visserijdata zal door Data Ontvanger uitsluitend worden gebruikt voor de in artikel 2.1 genoemde doeleinden.
+
+2.3 Deze overeenkomst heeft betrekking op de volgende specifieke datasets:
+   - [Beschrijf dataset 1, bijvoorbeeld: "Vangstgegevens van boomkorvisserij in de Nederlandse EEZ voor de periode 2023-2024"]
+   - [Beschrijf dataset 2, bijvoorbeeld: "Locatie- en vangstgegevens van kottervloot in gebied IVc voor de periode 2023-2024"]
+
+### Artikel 3. Dataspecificaties en -stromen
+
+3.1 De door Data Eigenaar aan Primaire Repository te verstrekken Visserijdata bestaat uit:
+   - Type gegevens: [Specificeer, bijvoorbeeld: "Vangstgegevens per vissoort, per vaartuig, per dag"]
+   - Geografische dekking: [Specificeer, bijvoorbeeld: "Nederlandse territoriale wateren en EEZ"]
+   - Tijdsperiode: [Specificeer, bijvoorbeeld: "Gegevens van januari 2023 tot december 2024"]
+
+3.2 De Visserijdata wordt verstrekt en opgeslagen in het volgende format:
+   - Bestandstype: [Specificeer, bijvoorbeeld: "CSV-bestanden"]
+   - Variabelen: [Specificeer, bijvoorbeeld: "Vaartuig-ID (geanonimiseerd), datum, locatie (ICES-vak), vissoort, gewicht (kg), visserijtechniek"]
+   - Metadata: [Specificeer, bijvoorbeeld: "Conform ICES-standaarden"]
+
+3.3 De frequentie van de data-overdracht is als volgt:
+   - Van Data Eigenaar naar Primaire Repository: [Specificeer, bijvoorbeeld: "Dagelijks, uiterlijk om 20:00 uur"]
+   - Van Primaire Repository naar Secundaire Repository: [Specificeer, bijvoorbeeld: "Dagelijks, uiterlijk om 23:00 uur"]
+   - Van Primaire Repository naar Data Ontvanger: [Specificeer, bijvoorbeeld: "Wekelijks, uiterlijk op vrijdag 17:00 uur"]
+   - Van Secundaire Repository naar Data Ontvanger (in geval van uitval Primaire Repository): [Specificeer, bijvoorbeeld: "Op verzoek, binnen 4 uur na ontvangst verzoek"]
+
+3.4 De Visserijdata wordt overgedragen via:
+   - Van Data Eigenaar naar Primaire Repository: [Specificeer, bijvoorbeeld: "Beveiligde API-verbinding"]
+   - Van Primaire Repository naar Secundaire Repository: [Specificeer, bijvoorbeeld: "Beveiligde, versleutelde replicatie"]
+   - Van Primaire/Secundaire Repository naar Data Ontvanger: [Specificeer, bijvoorbeeld: "Beveiligde toegang tot het betreffende Repository Systeem"]
+
+3.5 Alle Partijen zullen bij de overdracht en opslag van de Visserijdata gebruikmaken van de standaarden en protocollen die zijn vastgelegd in Bijlage 1 (Dataspecificaties en Technische Protocollen).
+
+### Artikel 4. Rollen en Verantwoordelijkheden
+
+4.1 **Data Eigenaar** is verantwoordelijk voor:
+   - De juistheid, volledigheid en rechtmatigheid van de Visserijdata
+   - Het vaststellen van toegangsrechten en gebruiksvoorwaarden voor de Visserijdata
+   - Het periodiek controleren van naleving van deze overeenkomst door andere Partijen
+
+4.2 **Primaire Repository** is verantwoordelijk voor:
+   - Het veilig opslaan en beheren van de Visserijdata als primaire opslaglocatie
+   - Het implementeren en onderhouden van adequate beveiligingsmaatregelen
+   - Het beschikbaar stellen van de Visserijdata aan Secundaire Repository
+   - Het primair beschikbaar stellen van de Visserijdata aan Data Ontvanger
+   - Het bijhouden van een logboek van alle toegang tot en gebruik van de Visserijdata
+
+4.3 **Secundaire Repository** is verantwoordelijk voor:
+   - Het veilig opslaan en beheren van de Visserijdata als back-up en alternatieve distributiekanaal
+   - Het implementeren en onderhouden van adequate beveiligingsmaatregelen
+   - Het beschikbaar stellen van de Visserijdata aan Data Ontvanger in geval van uitval van Primaire Repository
+   - Het bijhouden van een logboek van alle toegang tot en gebruik van de Visserijdata
+
+4.4 **Data Ontvanger** is verantwoordelijk voor:
+   - Het gebruiken van de Visserijdata in overeenstemming met de doeleinden zoals beschreven in artikel 2.1
+   - Het implementeren van passende maatregelen ter bescherming van de Visserijdata
+   - Het rapporteren over het gebruik van de Visserijdata aan de andere Partijen
+
+### Artikel 5. Wettelijke Basis
+
+5.1 Partijen verklaren dat zij bij de uitvoering van deze overeenkomst alle Toepasselijke Wetgeving zullen naleven.
+
+5.2 Partijen erkennen dat op de verwerking van Visserijdata de volgende specifieke wettelijke bepalingen van toepassing zijn:
+   - Artikel 11 van de Visserijwet 1963, betreffende de registratie van vangsten
+   - Verordening (EU) nr. 1380/2013 inzake het Gemeenschappelijk Visserijbeleid
+   - Verordening (EU) 2016/679 (AVG)
+   - Uitvoeringswet AVG
+
+5.3 Voor zover de Visserijdata Persoonsgegevens bevat, verklaart Data Eigenaar dat hij beschikt over een geldige grondslag voor de verstrekking van deze gegevens aan de overige Partijen, als bedoeld in artikel 6 AVG.
+
+### Artikel 6. Verplichtingen Data Eigenaar
+
+6.1 Data Eigenaar garandeert dat:
+   - de verstrekte Visserijdata juist, volledig en actueel is;
+   - hij gerechtigd is de Visserijdata aan Primaire Repository te verstrekken;
+   - de Visserijdata is verzameld in overeenstemming met de Toepasselijke Wetgeving.
+
+6.2 Data Eigenaar zal de Visserijdata verstrekken aan Primaire Repository volgens de specificaties in artikel 3 en binnen de afgesproken termijnen.
+
+6.3 Data Eigenaar zal redelijke ondersteuning bieden bij vragen of onduidelijkheden over de verstrekte Visserijdata.
+
+6.4 Data Eigenaar informeert Primaire Repository onmiddellijk als blijkt dat verstrekte Visserijdata onjuist of onvolledig is.
+
+6.5 Data Eigenaar houdt toezicht op de naleving van deze overeenkomst door de andere Partijen en is gerechtigd om periodiek audits uit te voeren of te laten uitvoeren bij de andere Partijen om deze naleving te controleren.
+
+### Artikel 7. Verplichtingen Primaire Repository
+
+7.1 Primaire Repository zal:
+   - een betrouwbaar en beveiligd Primair Repository Systeem opzetten en onderhouden voor de opslag van de Visserijdata;
+   - zorgen voor passende technische en organisatorische maatregelen om de Visserijdata te beveiligen tegen verlies of onrechtmatige verwerking;
+   - de integriteit, vertrouwelijkheid en beschikbaarheid van de Visserijdata waarborgen;
+   - toegangscontroles implementeren om ervoor te zorgen dat alleen geautoriseerde personen toegang hebben tot de Visserijdata;
+   - de Visserijdata beschikbaar stellen aan Secundaire Repository en Data Ontvanger volgens de specificaties in artikel 3;
+   - een logboek bijhouden van alle toegang tot en gebruik van de Visserijdata.
+
+7.2 Primaire Repository zal regelmatig back-ups maken van de Visserijdata en procedures implementeren voor herstel in geval van dataverlies.
+
+7.3 Primaire Repository zal de Visserijdata niet voor eigen doeleinden gebruiken, tenzij hiervoor uitdrukkelijke schriftelijke toestemming is verkregen van Data Eigenaar.
+
+7.4 Primaire Repository zal [FREQUENTIE] aan Data Eigenaar rapporteren over:
+   - De status van het Primair Repository Systeem
+   - Toegang tot en gebruik van de Visserijdata
+   - Eventuele (pogingen tot) beveiligingsincidenten
+   - De synchronisatie met Secundaire Repository
+
+7.5 Primaire Repository zal procedures implementeren voor een naadloze overdracht van taken naar Secundaire Repository in geval van storing of uitval.
+
+### Artikel 8. Verplichtingen Secundaire Repository
+
+8.1 Secundaire Repository zal:
+   - een betrouwbaar en beveiligd Secundair Repository Systeem opzetten en onderhouden voor de opslag van de Visserijdata;
+   - zorgen voor passende technische en organisatorische maatregelen om de Visserijdata te beveiligen tegen verlies of onrechtmatige verwerking;
+   - de integriteit, vertrouwelijkheid en beschikbaarheid van de Visserijdata waarborgen;
+   - toegangscontroles implementeren om ervoor te zorgen dat alleen geautoriseerde personen toegang hebben tot de Visserijdata;
+   - de Visserijdata beschikbaar stellen aan Data Ontvanger in geval van uitval van Primaire Repository volgens de specificaties in artikel 3;
+   - een logboek bijhouden van alle toegang tot en gebruik van de Visserijdata.
+
+8.2 Secundaire Repository zal regelmatig testen uitvoeren om te verifiëren dat het Secundair Repository Systeem correct functioneert en in staat is om de rol van Primaire Repository over te nemen indien nodig.
+
+8.3 Secundaire Repository zal de Visserijdata niet voor eigen doeleinden gebruiken, tenzij hiervoor uitdrukkelijke schriftelijke toestemming is verkregen van Data Eigenaar.
+
+8.4 Secundaire Repository zal [FREQUENTIE] aan Data Eigenaar en Primaire Repository rapporteren over:
+   - De status van het Secundair Repository Systeem
+   - Toegang tot en gebruik van de Visserijdata
+   - Eventuele (pogingen tot) beveiligingsincidenten
+   - De synchronisatie met Primaire Repository
+
+### Artikel 9. Verplichtingen Data Ontvanger
+
+9.1 Data Ontvanger zal:
+   - de Visserijdata uitsluitend gebruiken voor de in artikel 2.1 genoemde doeleinden;
+   - passende technische en organisatorische maatregelen treffen om de Visserijdata te beveiligen tegen verlies of onrechtmatige verwerking;
+   - de Visserijdata niet verstrekken aan derden zonder voorafgaande schriftelijke toestemming van Data Eigenaar;
+   - zorgen dat zijn medewerkers die toegang hebben tot de Visserijdata op de hoogte zijn van de bepalingen van deze overeenkomst en zich daaraan zullen houden.
+
+9.2 Data Ontvanger zal [FREQUENTIE] aan de andere Partijen rapporteren over:
+   - Het gebruik van de Visserijdata
+   - De resultaten van analyses van de Visserijdata
+   - Eventuele publicaties of rapporten waarin de Visserijdata is verwerkt
+
+### Artikel 10. Gegevensbescherming en Privacy
+
+10.1 Voor zover de Visserijdata Persoonsgegevens bevat, zullen Partijen deze Persoonsgegevens verwerken in overeenstemming met de AVG en andere Toepasselijke Wetgeving.
+
+10.2 In de context van deze overeenkomst handelt:
+   - Data Eigenaar als verwerkingsverantwoordelijke ten aanzien van de oorspronkelijke verzameling van Persoonsgegevens;
+   - Primaire Repository als verwerker namens Data Eigenaar voor wat betreft de primaire opslag en beheer van de Persoonsgegevens;
+   - Secundaire Repository als verwerker namens Data Eigenaar voor wat betreft de back-up opslag en alternatieve distributie van de Persoonsgegevens;
+   - Data Ontvanger als verwerkingsverantwoordelijke ten aanzien van zijn eigen verwerking van de Persoonsgegevens voor de in artikel 2.1 genoemde doeleinden.
+
+10.3 Alle Partijen zullen passende technische en organisatorische maatregelen treffen om de Persoonsgegevens te beveiligen, waaronder in ieder geval:
+   - Pseudonimisering en versleuteling van Persoonsgegevens
+   - Beperking van toegang tot geautoriseerde medewerkers
+   - Implementatie van een procedure voor het regelmatig testen, beoordelen en evalueren van de doeltreffendheid van deze maatregelen
+
+10.4 In geval van een datalek dat betrekking heeft op de Visserijdata, zal de Partij die het datalek constateert de andere Partijen hiervan onmiddellijk, doch uiterlijk binnen 24 uur na ontdekking, op de hoogte stellen. Partijen zullen vervolgens samenwerken om de gevolgen van het datalek te beperken en te voldoen aan eventuele meldplichten op grond van de AVG.
+
+### Artikel 11. Intellectuele Eigendomsrechten
+
+11.1 Alle intellectuele eigendomsrechten met betrekking tot de Visserijdata berusten bij Data Eigenaar of diens licentiegevers. Niets in deze overeenkomst kan worden uitgelegd als een overdracht van intellectuele eigendomsrechten aan Primaire Repository, Secundaire Repository of Data Ontvanger.
+
+11.2 Data Eigenaar verleent aan:
+   - Primaire Repository een niet-exclusieve, niet-overdraagbare licentie voor het opslaan, beheren en beschikbaar stellen van de Visserijdata aan Secundaire Repository en Data Ontvanger gedurende de looptijd van deze overeenkomst;
+   - Secundaire Repository een niet-exclusieve, niet-overdraagbare licentie voor het opslaan, beheren en beschikbaar stellen van de Visserijdata aan Data Ontvanger gedurende de looptijd van deze overeenkomst;
+   - Data Ontvanger een niet-exclusieve, niet-overdraagbare licentie voor het gebruik van de Visserijdata voor de in artikel 2.1 genoemde doeleinden gedurende de looptijd van deze overeenkomst.
+
+11.3 Bij publicatie van onderzoeksresultaten die gebaseerd zijn op de Visserijdata, zal Data Ontvanger de volgende bronvermelding opnemen:
+   - [Specificeer, bijvoorbeeld: "Bron: Visserijdata [NAAM DATA EIGENAAR], beheerd door [NAAM PRIMAIRE REPOSITORY] en [NAAM SECUNDAIRE REPOSITORY], [JAAR]"]
+
+11.4 Data Ontvanger zal voorafgaand aan publicatie van onderzoeksresultaten die gebaseerd zijn op de Visserijdata, Data Eigenaar in de gelegenheid stellen om deze resultaten te verifiëren op juistheid en om te controleren of er geen vertrouwelijke informatie of bedrijfsgeheimen worden prijsgegeven.
+
+### Artikel 12. Bewaartermijnen
+
+12.1 Primaire Repository en Secundaire Repository mogen de Visserijdata bewaren voor een periode van [TERMIJN], gerekend vanaf de datum van ontvangst van Data Eigenaar.
+
+12.2 Data Ontvanger mag de Visserijdata bewaren voor een periode van [TERMIJN], gerekend vanaf de datum van ontvangst van Primaire Repository of Secundaire Repository.
+
+12.3 Na afloop van de in artikel 12.1 en 12.2 genoemde perioden zullen Primaire Repository, Secundaire Repository en Data Ontvanger:
+   - De Visserijdata permanent verwijderen uit al hun systemen, tenzij bewaring op grond van de wet vereist is;
+   - Op verzoek van Data Eigenaar schriftelijk bevestigen dat de Visserijdata is verwijderd.
+
+12.4 In afwijking van artikel 12.1 en 12.2 zullen Primaire Repository, Secundaire Repository en Data Ontvanger de Visserijdata onmiddellijk verwijderen na beëindiging van deze overeenkomst, tenzij anders overeengekomen of wettelijk vereist.
+
+### Artikel 13. Continuïteit en Failover
+
+13.1 Primaire Repository en Secundaire Repository zullen gezamenlijk een continuïteitsplan opstellen en onderhouden dat minimaal de volgende elementen bevat:
+   - Procedures voor regelmatige synchronisatie tussen Primair en Secundair Repository Systeem
+   - Procedures voor detectie van uitval of storing van het Primair Repository Systeem
+   - Procedures voor automatische of handmatige failover naar het Secundair Repository Systeem
+   - Procedures voor terugkeer naar het Primair Repository Systeem na herstel
+
+13.2 Het continuïteitsplan zal worden opgenomen als Bijlage 2 bij deze overeenkomst en zal jaarlijks worden getest en zo nodig worden bijgewerkt.
+
+13.3 In geval van uitval of storing van het Primair Repository Systeem:
+   - Zal Primaire Repository Secundaire Repository hiervan onmiddellijk op de hoogte stellen
+   - Zal Secundaire Repository de taken van Primaire Repository overnemen volgens de procedures in het continuïteitsplan
+   - Zal Data Ontvanger worden geïnformeerd over de tijdelijke wijziging in de beschikbaarstelling van de Visserijdata
+
+13.4 Primaire Repository en Secundaire Repository garanderen een gezamenlijke beschikbaarheid van de Visserijdata van minimaal [PERCENTAGE]% op jaarbasis.
+
+### Artikel 14. Vertrouwelijkheid
+
+14.1 Partijen zullen alle Visserijdata en andere informatie die zij in het kader van deze overeenkomst van elkaar ontvangen en die als vertrouwelijk is aangeduid of waarvan het vertrouwelijke karakter redelijkerwijs kan worden vermoed, strikt vertrouwelijk behandelen.
+
+14.2 De verplichtingen uit artikel 14.1 gelden niet voor informatie:
+   - Die al openbaar is of wordt zonder dat de ontvangende Partij deze overeenkomst schendt;
+   - Die de ontvangende Partij reeds rechtmatig in bezit had voordat zij deze van de andere Partij ontving;
+   - Die de ontvangende Partij rechtmatig van een derde heeft ontvangen zonder een verplichting tot vertrouwelijkheid;
+   - Die de ontvangende Partij moet vrijgeven op grond van een wettelijke verplichting of een rechterlijke uitspraak.
+
+14.3 De verplichtingen uit dit artikel blijven ook na beëindiging van deze overeenkomst van kracht.
+
+### Artikel 15. Aansprakelijkheid
+
+15.1 Data Eigenaar is verantwoordelijk voor de juistheid, volledigheid en rechtmatigheid van de Visserijdata die hij verstrekt aan Primaire Repository.
+
+15.2 Primaire Repository is verantwoordelijk voor het veilig opslaan, beheren en beschikbaar stellen van de Visserijdata aan Secundaire Repository en Data Ontvanger.
+
+15.3 Secundaire Repository is verantwoordelijk voor het veilig opslaan, beheren en beschikbaar stellen van de Visserijdata aan Data Ontvanger in geval van uitval van Primaire Repository.
+
+15.4 Data Ontvanger is verantwoordelijk voor zijn gebruik van de Visserijdata.
+
+15.5 Data Eigenaar vrijwaart Primaire Repository, Secundaire Repository en Data Ontvanger tegen aanspraken van derden die gebaseerd zijn op de bewering dat de Visserijdata inbreuk maakt op intellectuele eigendomsrechten van derden, tenzij deze aanspraken het gevolg zijn van wijzigingen die door een van de andere Partijen in de Visserijdata zijn aangebracht.
+
+15.6 Primaire Repository en Secundaire Repository vrijwaren Data Eigenaar en Data Ontvanger tegen aanspraken van derden die voortvloeien uit of verband houden met een tekortkoming van hen in de nakoming van hun verplichtingen uit deze overeenkomst.
+
+15.7 Data Ontvanger vrijwaart Data Eigenaar, Primaire Repository en Secundaire Repository tegen aanspraken van derden die voortvloeien uit of verband houden met het gebruik van de Visserijdata door Data Ontvanger.
+
+15.8 De totale aansprakelijkheid van iedere Partij uit hoofde van deze overeenkomst is beperkt tot directe schade met een maximum van € [BEDRAG].
+
+15.9 Geen van de Partijen is aansprakelijk voor indirecte schade, waaronder begrepen gevolgschade, gederfde winst, gemiste besparingen, schade door bedrijfsstagnatie en schade door verlies van gegevens.
+
+### Artikel 16. Duur en Beëindiging
+
+16.1 Deze overeenkomst treedt in werking op [DATUM] en heeft een looptijd van [PERIODE].
+
+16.2 Deze overeenkomst kan door alle Partijen worden verlengd door middel van een schriftelijke kennisgeving aan de andere Partijen, uiterlijk [TERMIJN] voor afloop van de huidige looptijd.
+
+16.3 Iedere Partij heeft het recht om deze overeenkomst met onmiddellijke ingang te beëindigen in geval van:
+   - Een materiële schending van deze overeenkomst door een andere Partij, die niet binnen 30 dagen na schriftelijke kennisgeving is hersteld;
+   - Faillissement, surseance van betaling of liquidatie van een andere Partij.
+
+16.4 Data Eigenaar heeft het recht om de verstrekking van Visserijdata aan Primaire Repository op te schorten of te beëindigen indien Primaire Repository, Secundaire Repository of Data Ontvanger de Visserijdata gebruikt in strijd met deze overeenkomst.
+
+16.5 Bij beëindiging van deze overeenkomst:
+   - Eindigt het recht van Primaire Repository om de Visserijdata op te slaan en beschikbaar te stellen;
+   - Eindigt het recht van Secundaire Repository om de Visserijdata op te slaan en beschikbaar te stellen;
+   - Eindigt het recht van Data Ontvanger om de Visserijdata te gebruiken;
+   - Dienen Primaire Repository, Secundaire Repository en Data Ontvanger de Visserijdata te verwijderen of te retourneren conform artikel 12.3;
+   - Blijven de bepalingen die naar hun aard bedoeld zijn om na beëindiging van kracht te blijven, waaronder artikelen 11, 14 en 15, van kracht.
+
+### Artikel 17. Geschillenbeslechting
+
+17.1 Op deze overeenkomst is Nederlands recht van toepassing.
+
+17.2 Alle geschillen die voortvloeien uit of verband houden met deze overeenkomst zullen in eerste instantie worden opgelost door middel van overleg tussen Partijen.
+
+17.3 Indien een geschil niet binnen 60 dagen door overleg kan worden opgelost, zal het geschil worden voorgelegd aan de bevoegde rechter in [ARRONDISSEMENT], Nederland.
+
+### Artikel 18. Slotbepalingen
+
+18.1 Deze overeenkomst kan alleen worden gewijzigd door middel van een schriftelijk document dat door alle Partijen is ondertekend.
+
+18.2 Indien een bepaling van deze overeenkomst ongeldig of niet-afdwingbaar blijkt te zijn, blijven de overige bepalingen van kracht. Partijen zullen de ongeldige of niet-afdwingbare bepaling vervangen door een geldige en afdwingbare bepaling die zo veel mogelijk overeenkomt met de bedoeling van de oorspronkelijke bepaling.
+
+18.3 Deze overeenkomst bevat alle afspraken tussen Partijen met betrekking tot het onderwerp ervan en vervangt alle eerdere overeenkomsten en afspraken met betrekking tot dit onderwerp.
+
+18.4 Deze overeenkomst kan niet worden overgedragen aan een derde zonder voorafgaande schriftelijke toestemming van alle Partijen.
+
+18.5 De volgende bijlagen vormen een integraal onderdeel van deze overeenkomst:
+   - Bijlage 1: Dataspecificaties en Technische Protocollen
+   - Bijlage 2: Continuïteitsplan en Failover Procedures
+   - Bijlage 3: Beveiligingseisen
+   - Bijlage 4: Service Level Agreements
+
+ALDUS OVEREENGEKOMEN EN ONDERTEKEND IN VIERVOUD:
+
+**Namens Data Eigenaar:**
+
+Naam: ___________________________
+
+Functie: _________________________
+
+Plaats: __________________________
+
+Datum: __________________________
+
+Handtekening: ____________________
+
+
+**Namens Primaire Repository:**
+
+Naam: ___________________________
+
+Functie: _________________________
+
+Plaats: __________________________
+
+Datum: __________________________
+
+Handtekening: ____________________
+
+
+**Namens Secundaire Repository:**
+
+Naam: ___________________________
+
+Functie: _________________________
+
+Plaats: __________________________
+
+Datum: __________________________
+
+Handtekening: ____________________
+
+
+**Namens Data Ontvanger:**
+
+Naam: ___________________________
+
+Functie: _________________________
+
+Plaats: __________________________
+
+Datum: __________________________
+
+Handtekening: ____________________

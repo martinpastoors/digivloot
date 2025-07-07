@@ -1,0 +1,228 @@
+---
+title: "Untitled"
+author: "Martin Pastoors"
+date: "2025-04-24"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# DATA SHARING AGREEMENT VISSERIJDATA NEDERLAND
+
+## PARTIJEN:
+
+**1. [NAAM DATA PROVIDER]**, gevestigd te [ADRES], ingeschreven in het handelsregister van de Kamer van Koophandel onder nummer [KVK NUMMER], te dezen rechtsgeldig vertegenwoordigd door [NAAM], [FUNCTIE], hierna te noemen: "Data Provider";
+
+en
+
+**2. [NAAM DATA ONTVANGER]**, gevestigd te [ADRES], ingeschreven in het handelsregister van de Kamer van Koophandel onder nummer [KVK NUMMER], te dezen rechtsgeldig vertegenwoordigd door [NAAM], [FUNCTIE], hierna te noemen: "Data Ontvanger";
+
+hierna gezamenlijk te noemen: "Partijen" en ieder afzonderlijk: "Partij".
+
+## OVERWEGENDE DAT:
+
+A. Data Provider beschikt over visserijdata zoals gedefinieerd in deze overeenkomst;
+
+B. Data Ontvanger deze visserijdata wenst te ontvangen en te gebruiken voor de in deze overeenkomst genoemde doeleinden;
+
+C. Partijen in deze overeenkomst de voorwaarden wensen vast te leggen waaronder de visserijdata wordt gedeeld en gebruikt;
+
+## KOMEN OVEREEN ALS VOLGT:
+
+### Artikel 1. Definities
+
+In deze overeenkomst worden de volgende begrippen met een beginhoofdletter gebruikt, zowel in enkelvoud als in meervoud. Onder deze begrippen wordt verstaan:
+
+1.1 **Visserijdata**: alle gegevens betreffende visserijactiviteiten, waaronder begrepen maar niet beperkt tot vangstgegevens, vergunningen, quotagegevens, locatiegegevens, gegevens over visserijtechnieken, vaartuiggegevens, en andere voor de visserijsector relevante gegevens die in het kader van deze overeenkomst worden gedeeld.
+
+1.2 **Persoonsgegeven**: alle informatie over een geïdentificeerde of identificeerbare natuurlijke persoon zoals gedefinieerd in artikel 4 sub 1 van de Algemene Verordening Gegevensbescherming (AVG).
+
+1.3 **Verwerken/Verwerking**: een bewerking of een geheel van bewerkingen met betrekking tot Visserijdata, zoals gedefinieerd in artikel 4 sub 2 van de AVG.
+
+1.4 **Toepasselijke Wetgeving**: alle toepasselijke wet- en regelgeving op het gebied van gegevensbescherming, waaronder in ieder geval de AVG, de Uitvoeringswet AVG, de Visserijwet 1963, en alle relevante EU-regelgeving waaronder het Gemeenschappelijk Visserijbeleid.
+
+### Artikel 2. Doel en Reikwijdte
+
+2.1 Data Provider zal aan Data Ontvanger Visserijdata verstrekken voor de volgende doeleinden:
+   - [Specificeer concreet doel, bijvoorbeeld: "Voor het analyseren van vangstgegevens ter verbetering van het beheer van visbestanden in de Noordzee"]
+   - [Specificeer concreet doel, bijvoorbeeld: "Voor het uitvoeren van wetenschappelijk onderzoek naar duurzame visserijmethoden"]
+
+2.2 De Visserijdata zal door Data Ontvanger uitsluitend worden gebruikt voor de in artikel 2.1 genoemde doeleinden.
+
+2.3 Deze overeenkomst heeft betrekking op de volgende specifieke datasets:
+   - [Beschrijf dataset 1, bijvoorbeeld: "Vangstgegevens van boomkorvisserij in de Nederlandse EEZ voor de periode 2023-2024"]
+   - [Beschrijf dataset 2, bijvoorbeeld: "Locatie- en vangstgegevens van kottervloot in gebied IVc voor de periode 2023-2024"]
+
+### Artikel 3. Dataspecificaties
+
+3.1 De door Data Provider te verstrekken Visserijdata bestaat uit:
+   - Type gegevens: [Specificeer, bijvoorbeeld: "Vangstgegevens per vissoort, per vaartuig, per dag"]
+   - Geografische dekking: [Specificeer, bijvoorbeeld: "Nederlandse territoriale wateren en EEZ"]
+   - Tijdsperiode: [Specificeer, bijvoorbeeld: "Gegevens van januari 2023 tot december 2024"]
+
+3.2 De Visserijdata wordt verstrekt in het volgende format:
+   - Bestandstype: [Specificeer, bijvoorbeeld: "CSV-bestanden"]
+   - Variabelen: [Specificeer, bijvoorbeeld: "Vaartuig-ID (geanonimiseerd), datum, locatie (ICES-vak), vissoort, gewicht (kg), visserijtechniek"]
+   - Metadata: [Specificeer, bijvoorbeeld: "Conform ICES-standaarden"]
+
+3.3 De frequentie van de data-uitwisseling is als volgt:
+   - [Specificeer, bijvoorbeeld: "Maandelijks, uiterlijk op de 15e van de volgende maand"]
+   - [Of: "Eenmalige overdracht op [DATUM]"]
+
+3.4 De Visserijdata wordt overgedragen via:
+   - [Specificeer, bijvoorbeeld: "Beveiligde FTP-server van Data Provider"]
+   - [Of: "Versleutelde bestanden via elektronische overdracht"]
+
+### Artikel 4. Wettelijke Basis
+
+4.1 Partijen verklaren dat zij bij de uitvoering van deze overeenkomst alle Toepasselijke Wetgeving zullen naleven.
+
+4.2 Data Provider en Data Ontvanger erkennen dat op de verwerking van Visserijdata de volgende specifieke wettelijke bepalingen van toepassing zijn:
+   - Artikel 11 van de Visserijwet 1963, betreffende de registratie van vangsten
+   - Verordening (EU) nr. 1380/2013 inzake het Gemeenschappelijk Visserijbeleid
+   - Verordening (EU) 2016/679 (AVG)
+   - Uitvoeringswet AVG
+
+4.3 Voor zover de Visserijdata Persoonsgegevens bevat, verklaart Data Provider dat hij beschikt over een geldige grondslag voor de verstrekking van deze gegevens aan Data Ontvanger als bedoeld in artikel 6 AVG.
+
+### Artikel 5. Verplichtingen Data Provider
+
+5.1 Data Provider garandeert dat:
+   - de verstrekte Visserijdata juist, volledig en actueel is;
+   - hij gerechtigd is de Visserijdata aan Data Ontvanger te verstrekken;
+   - de Visserijdata is verzameld in overeenstemming met de Toepasselijke Wetgeving.
+
+5.2 Data Provider zal de Visserijdata verstrekken volgens de specificaties in artikel 3 en binnen de afgesproken termijnen.
+
+5.3 Data Provider zal redelijke ondersteuning bieden bij vragen of onduidelijkheden over de verstrekte Visserijdata.
+
+5.4 Data Provider informeert Data Ontvanger onmiddellijk als blijkt dat verstrekte Visserijdata onjuist of onvolledig is.
+
+### Artikel 6. Verplichtingen Data Ontvanger
+
+6.1 Data Ontvanger zal:
+   - de Visserijdata uitsluitend gebruiken voor de in artikel 2.1 genoemde doeleinden;
+   - passende technische en organisatorische maatregelen treffen om de Visserijdata te beveiligen tegen verlies of onrechtmatige verwerking;
+   - de Visserijdata niet verstrekken aan derden zonder voorafgaande schriftelijke toestemming van Data Provider;
+   - zorgen dat zijn medewerkers die toegang hebben tot de Visserijdata op de hoogte zijn van de bepalingen van deze overeenkomst en zich daaraan zullen houden.
+
+6.2 Data Ontvanger zal [FREQUENTIE] aan Data Provider rapporteren over:
+   - Het gebruik van de Visserijdata
+   - De resultaten van analyses van de Visserijdata
+   - Eventuele publicaties of rapporten waarin de Visserijdata is verwerkt
+
+### Artikel 7. Gegevensbescherming en Privacy
+
+7.1 Voor zover de Visserijdata Persoonsgegevens bevat, zullen Partijen deze Persoonsgegevens verwerken in overeenstemming met de AVG en andere Toepasselijke Wetgeving.
+
+7.2 Data Ontvanger zal passende technische en organisatorische maatregelen treffen om de Persoonsgegevens te beveiligen, waaronder in ieder geval:
+   - Pseudonimisering en versleuteling van Persoonsgegevens
+   - Beperking van toegang tot geautoriseerde medewerkers
+   - Implementatie van een procedure voor het regelmatig testen, beoordelen en evalueren van de doeltreffendheid van deze maatregelen
+
+7.3 In geval van een datalek dat betrekking heeft op de Visserijdata, zal de Partij die het datalek constateert de andere Partij hiervan onmiddellijk, doch uiterlijk binnen 24 uur na ontdekking, op de hoogte stellen. Partijen zullen vervolgens samenwerken om de gevolgen van het datalek te beperken en te voldoen aan eventuele meldplichten op grond van de AVG.
+
+### Artikel 8. Intellectuele Eigendomsrechten
+
+8.1 Alle intellectuele eigendomsrechten met betrekking tot de Visserijdata berusten bij Data Provider of diens licentiegevers. Niets in deze overeenkomst kan worden uitgelegd als een overdracht van intellectuele eigendomsrechten aan Data Ontvanger.
+
+8.2 Data Provider verleent aan Data Ontvanger een niet-exclusieve, niet-overdraagbare licentie voor het gebruik van de Visserijdata voor de in artikel 2.1 genoemde doeleinden gedurende de looptijd van deze overeenkomst.
+
+8.3 Bij publicatie van onderzoeksresultaten die gebaseerd zijn op de Visserijdata, zal Data Ontvanger de volgende bronvermelding opnemen:
+   - [Specificeer, bijvoorbeeld: "Bron: Visserijdata [NAAM DATA PROVIDER], [JAAR]"]
+
+8.4 Data Ontvanger zal voorafgaand aan publicatie van onderzoeksresultaten die gebaseerd zijn op de Visserijdata, Data Provider in de gelegenheid stellen om deze resultaten te verifiëren op juistheid en om te controleren of er geen vertrouwelijke informatie of bedrijfsgeheimen worden prijsgegeven.
+
+### Artikel 9. Bewaartermijnen
+
+9.1 Data Ontvanger mag de Visserijdata bewaren voor een periode van [TERMIJN], gerekend vanaf de datum van ontvangst.
+
+9.2 Na afloop van de in artikel 9.1 genoemde periode zal Data Ontvanger:
+   - De Visserijdata permanent verwijderen uit al zijn systemen, tenzij bewaring op grond van de wet vereist is;
+   - Op verzoek van Data Provider schriftelijk bevestigen dat de Visserijdata is verwijderd.
+
+9.3 In afwijking van artikel 9.1 zal Data Ontvanger de Visserijdata onmiddellijk verwijderen na beëindiging van deze overeenkomst, tenzij anders overeengekomen of wettelijk vereist.
+
+### Artikel 10. Vertrouwelijkheid
+
+10.1 Partijen zullen alle Visserijdata en andere informatie die zij in het kader van deze overeenkomst van elkaar ontvangen en die als vertrouwelijk is aangeduid of waarvan het vertrouwelijke karakter redelijkerwijs kan worden vermoed, strikt vertrouwelijk behandelen.
+
+10.2 De verplichtingen uit artikel 10.1 gelden niet voor informatie:
+   - Die al openbaar is of wordt zonder dat de ontvangende Partij deze overeenkomst schendt;
+   - Die de ontvangende Partij reeds rechtmatig in bezit had voordat zij deze van de andere Partij ontving;
+   - Die de ontvangende Partij rechtmatig van een derde heeft ontvangen zonder een verplichting tot vertrouwelijkheid;
+   - Die de ontvangende Partij moet vrijgeven op grond van een wettelijke verplichting of een rechterlijke uitspraak.
+
+10.3 De verplichtingen uit dit artikel blijven ook na beëindiging van deze overeenkomst van kracht.
+
+### Artikel 11. Aansprakelijkheid
+
+11.1 Data Provider verstrekt de Visserijdata "as is" en geeft geen garanties met betrekking tot de juistheid, volledigheid of geschiktheid voor een bepaald doel van de Visserijdata.
+
+11.2 Data Provider is niet aansprakelijk voor schade die Data Ontvanger lijdt als gevolg van het gebruik van de Visserijdata, tenzij deze schade het gevolg is van opzet of grove schuld van Data Provider.
+
+11.3 Data Ontvanger vrijwaart Data Provider tegen alle aanspraken van derden die voortvloeien uit of verband houden met het gebruik van de Visserijdata door Data Ontvanger.
+
+11.4 De totale aansprakelijkheid van beide Partijen uit hoofde van deze overeenkomst is beperkt tot directe schade met een maximum van € [BEDRAG].
+
+### Artikel 12. Duur en Beëindiging
+
+12.1 Deze overeenkomst treedt in werking op [DATUM] en heeft een looptijd van [PERIODE].
+
+12.2 Deze overeenkomst kan door beide Partijen worden verlengd door middel van een schriftelijke kennisgeving aan de andere Partij, uiterlijk [TERMIJN] voor afloop van de huidige looptijd.
+
+12.3 Beide Partijen hebben het recht om deze overeenkomst met onmiddellijke ingang te beëindigen in geval van:
+   - Een materiële schending van deze overeenkomst door de andere Partij, die niet binnen 30 dagen na schriftelijke kennisgeving is hersteld;
+   - Faillissement, surseance van betaling of liquidatie van de andere Partij.
+
+12.4 Bij beëindiging van deze overeenkomst:
+   - Eindigt het recht van Data Ontvanger om de Visserijdata te gebruiken;
+   - Dient Data Ontvanger de Visserijdata te verwijderen of te retourneren conform artikel 9.2;
+   - Blijven de bepalingen die naar hun aard bedoeld zijn om na beëindiging van kracht te blijven, waaronder artikelen 8, 10 en 11, van kracht.
+
+### Artikel 13. Geschillenbeslechting
+
+13.1 Op deze overeenkomst is Nederlands recht van toepassing.
+
+13.2 Alle geschillen die voortvloeien uit of verband houden met deze overeenkomst zullen in eerste instantie worden opgelost door middel van overleg tussen Partijen.
+
+13.3 Indien een geschil niet binnen 60 dagen door overleg kan worden opgelost, zal het geschil worden voorgelegd aan de bevoegde rechter in [ARRONDISSEMENT], Nederland.
+
+### Artikel 14. Slotbepalingen
+
+14.1 Deze overeenkomst kan alleen worden gewijzigd door middel van een schriftelijk document dat door beide Partijen is ondertekend.
+
+14.2 Indien een bepaling van deze overeenkomst ongeldig of niet-afdwingbaar blijkt te zijn, blijven de overige bepalingen van kracht. Partijen zullen de ongeldige of niet-afdwingbare bepaling vervangen door een geldige en afdwingbare bepaling die zo veel mogelijk overeenkomt met de bedoeling van de oorspronkelijke bepaling.
+
+14.3 Deze overeenkomst bevat alle afspraken tussen Partijen met betrekking tot het onderwerp ervan en vervangt alle eerdere overeenkomsten en afspraken met betrekking tot dit onderwerp.
+
+14.4 Deze overeenkomst kan niet worden overgedragen aan een derde zonder voorafgaande schriftelijke toestemming van de andere Partij.
+
+ALDUS OVEREENGEKOMEN EN ONDERTEKEND IN TWEEVOUD:
+
+**Namens Data Provider:**
+
+Naam: ___________________________
+
+Functie: _________________________
+
+Plaats: __________________________
+
+Datum: __________________________
+
+Handtekening: ____________________
+
+
+**Namens Data Ontvanger:**
+
+Naam: ___________________________
+
+Functie: _________________________
+
+Plaats: __________________________
+
+Datum: __________________________
+
+Handtekening: ____________________
