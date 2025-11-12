@@ -1,0 +1,194 @@
+# Poseidat Unified Reader - Quick Reference
+# ==========================================
+
+## File Structure
+
+poseidat_reader_v2.R (EXISTING - your current functions)
+  ├── extract_trip_info()
+  ├── build_complete_trips()
+  ├── link_gear_to_activities()
+  ├── reconstruct_trip_timeline()
+  ├── summarize_trip_catches()
+  ├── parse_gps_data()
+  ├── parse_trawl_tension_data()
+  ├── parse_ctd_data()
+  ├── parse_temperature_data()
+  ├── parse_weather_data()
+  ├── parse_speedlog_data()
+  ├── parse_fuel_data()
+  └── parse_all_sensor_data()
+
+poseidat_reader_unified.R (NEW - unified interface)
+  ├── read_poseidat() ...................... Read JSON + detect type
+  ├── detect_poseidat_type() ............... Auto-detect: trip/sensor/mixed
+  ├── extract_poseidat() ................... Route to appropriate parser
+  ├── read_and_extract_poseidat() .......... One-step convenience
+  └── print.poseidat() ..................... Pretty printing
+
+## Usage Patterns
+
+### SIMPLEST - One Line
+data <- read_and_extract_poseidat("file.json")
+
+### INSPECT FIRST - Two Steps
+obj <- read_poseidat("file.json")
+print(obj)  # See what you have
+data <- extract_poseidat(obj)
+
+### MANUAL CONTROL - Specify What You Want
+obj <- read_poseidat("file.json")
+gps <- extract_poseidat(obj, what = "gps")
+catches <- extract_poseidat(obj, what = "catches")
+
+### BATCH PROCESSING - Multiple Files
+files <- list.files(pattern = "*.json")
+all_data <- lapply(files, read_and_extract_poseidat)
+
+## Auto-Detection Logic
+
+File contains:
+  >80% device-measurement entries  → Type: "sensor"
+  >80% trip entries (departure/arrival/fishing) → Type: "trip"
+  Both >30% → Type: "mixed"
+  Otherwise → Type: "unknown" (returns raw data)
+
+## What Gets Extracted
+
+### When type = "sensor"
+  List:
+    $gps
+    $trawl_tension
+    $ctd
+    $temperature
+    $weather
+    $speedlog
+    $fuel
+
+### When type = "trip"
+  List:
+    $trip_info (all entries with trip_nr)
+    $trips_summary (aggregated by trip)
+    $gear (gear linked to activities)
+    $catches (all catches with discard_reason)
+    $timeline (first trip timeline)
+
+### When type = "mixed"
+  List:
+    $trip_data (nested list with above)
+    $sensor_data (nested list with above)
+
+## Manual Extraction Options
+
+extract_poseidat(obj, what = ...)
+
+Options:
+  "auto" ......... Auto-detect and extract (default)
+  "sensor" ....... All sensor data
+  "trip" ......... All trip data
+  "trips" ........ Just trips summary
+  "timeline" ..... Trip timeline
+  "catches" ...... Trip catches
+  "gps" .......... Just GPS data
+  "trawl" ........ Just trawl tension
+  "ctd" .......... Just CTD profiles
+
+## Object Structure
+
+poseidat <- read_poseidat("file.json")
+
+poseidat$data .......... Raw data frame
+poseidat$type .......... Detected type
+poseidat$metadata ...... List:
+  $file ................ Filename
+  $n_entries ........... Number of entries
+  $date_range .......... [min, max] datetime
+
+## Code Examples
+
+# Example 1: Simple extraction
+data <- read_and_extract_poseidat("trip.json")
+catches <- data$catches
+gps <- data$sensor_data$gps  # If mixed file
+
+# Example 2: Inspect before extracting
+obj <- read_poseidat("unknown_file.json")
+print(obj)
+# Shows: Type, number of entries, entry types
+
+# Example 3: Extract specific components
+obj <- read_poseidat("sensor_file.json")
+gps <- extract_poseidat(obj, what = "gps")
+trawl <- extract_poseidat(obj, what = "trawl")
+
+# Example 4: Process multiple files by type
+process_poseidat_folder <- function(folder) {
+  files <- list.files(folder, pattern = "*.json", full.names = TRUE)
+  
+  all_trips <- data.frame()
+  all_gps <- data.frame()
+  
+  for (file in files) {
+    obj <- read_poseidat(file)
+    
+    if (obj$type == "trip") {
+      data <- extract_poseidat(obj)
+      all_trips <- bind_rows(all_trips, data$trip_info)
+      
+    } else if (obj$type == "sensor") {
+      data <- extract_poseidat(obj)
+      all_gps <- bind_rows(all_gps, data$gps)
+    }
+  }
+  
+  return(list(trips = all_trips, gps = all_gps))
+}
+
+# Example 5: Extract catches for all trips
+obj <- read_poseidat("trip_file.json")
+data <- extract_poseidat(obj, what = "trip")
+
+# All catches already extracted
+catches <- data$catches  # Combined for all trips
+
+# Or get for specific trip
+trips <- unique(data$trip_info$trip_nr)
+trip1_catches <- catches %>% filter(trip_nr == trips[1])
+
+## Benefits
+
+✓ Auto-detects file type
+✓ Single interface for all data
+✓ Easy batch processing
+✓ Flexible extraction
+✓ Type-safe with S3 classes
+✓ Clear error messages
+✓ Backwards compatible
+
+## Workflow
+
+Old way (multiple functions):
+  raw <- fromJSON("file.json")
+  trip_info <- extract_trip_info(raw$items)
+  trips <- build_complete_trips(raw$items)
+  gear <- link_gear_to_activities(raw$items)
+  catches <- summarize_trip_catches(raw$items, trip_nr)
+
+New way (unified):
+  data <- read_and_extract_poseidat("file.json")
+  # Everything extracted automatically!
+
+## Tips
+
+1. Start with read_and_extract_poseidat() for simplicity
+2. Use print() to inspect files of unknown type
+3. Use manual extraction for large files (only parse what you need)
+4. Detection threshold is 80% - tune in detect_poseidat_type() if needed
+5. Always check $type if processing multiple files
+
+## Error Handling
+
+- Invalid JSON → Clear error with filename
+- Missing 'items' → Clear error message
+- Unknown type → Warning + returns raw data
+- No data found → Returns empty data.frame()
+- Parse errors → Silent, returns empty data.frame()
