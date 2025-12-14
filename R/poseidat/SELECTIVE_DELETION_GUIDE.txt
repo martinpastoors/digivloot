@@ -1,0 +1,283 @@
+================================================================================
+SELECTIVE DELETION FEATURES - WHAT'S NEW
+================================================================================
+
+The deletion system has been enhanced with powerful new capabilities!
+
+================================================================================
+NEW FEATURE 1: Delete Specific Data Types Only
+================================================================================
+
+You can now choose WHICH data types to delete instead of deleting everything.
+
+BEFORE (only option):
+  delete_vessel_data(vessel_id, ...)
+  → Deletes ALL data: trips, catches, AND sensors
+
+NOW (selective):
+  delete_vessel_data(vessel_id, ..., data_types = c("sensors"))
+  → Deletes ONLY sensors, keeps trips and catches intact!
+
+EXAMPLES:
+
+# Delete only sensor data (privacy concern)
+delete_vessel_data("NLD123456", "Privacy request", "Owner",
+                   dry_run = TRUE,
+                   data_types = c("sensors"))
+
+# Delete only catches (bad data entry)  
+delete_vessel_data("NLD123456", "Incorrect data", "Manager",
+                   dry_run = TRUE,
+                   data_types = c("catches"))
+
+# Delete catches AND sensors, keep trips
+delete_vessel_data("NLD123456", "Equipment issue", "Tech Team",
+                   dry_run = TRUE,
+                   data_types = c("catches", "sensors"))
+
+WHY THIS IS USEFUL:
+- Privacy: Delete sensitive sensor data but keep trip logs for research
+- Data Quality: Remove bad catches without losing trip metadata
+- Selective Compliance: Delete only what's required, preserve the rest
+- Flexible: Mix and match data types as needed
+
+================================================================================
+NEW FEATURE 2: Delete by Date Range
+================================================================================
+
+You can now delete data from specific time periods instead of all data.
+
+EXAMPLES:
+
+# Delete all OLD data (data retention policy)
+delete_vessel_data("NLD123456", "5-year retention policy", "Compliance",
+                   dry_run = TRUE,
+                   date_to = "2020-01-01")  # Everything BEFORE 2020
+→ Keeps all data from 2020 onwards!
+
+# Delete data from a SPECIFIC period (equipment was broken)
+delete_vessel_data("NLD123456", "Faulty sensor period", "Tech",
+                   dry_run = TRUE,
+                   date_from = "2024-03-01",
+                   date_to = "2024-03-31")  # Only March 2024
+→ Only deletes March 2024, everything else is safe!
+
+# Delete recent data (trial period cleanup)
+delete_vessel_data("NLD123456", "Trial period", "Manager",
+                   dry_run = TRUE,
+                   date_from = "2024-01-01")  # Everything AFTER Jan 1
+→ Deletes new data, keeps historical records!
+
+PARAMETERS:
+- date_from: Delete data FROM this date onwards
+- date_to: Delete data UP TO this date
+- Use both: Delete data BETWEEN these dates
+- Omit both: Delete ALL data (original behavior)
+
+WHY THIS IS USEFUL:
+- Data Retention: Automatically delete old data per policy
+- Quality Control: Remove data from known problematic periods
+- Trial Cleanup: Remove test/trial period data
+- Surgical Removal: Target exact time periods
+- Preserve History: Keep recent data, delete only old records
+
+================================================================================
+NEW FEATURE 3: Combine Filters for Surgical Precision
+================================================================================
+
+Combine data_types AND date filters for very targeted deletions!
+
+EXAMPLE 1: Delete only old sensor data
+delete_vessel_data("NLD123456", "Old sensor cleanup", "Manager",
+                   dry_run = TRUE,
+                   data_types = c("sensors"),      # Only sensors
+                   date_to = "2023-12-31")         # Only pre-2024
+→ Deletes ONLY sensor data from before 2024
+→ Trips, catches, and recent sensors are untouched!
+
+EXAMPLE 2: Delete catches and sensors from faulty period
+delete_vessel_data("NLD123456", "Equipment issue", "Tech",
+                   dry_run = TRUE,
+                   data_types = c("catches", "sensors"),  # Not trips
+                   date_from = "2024-06-15",
+                   date_to = "2024-06-20")                # 5 days only
+→ Trips remain completely intact
+→ Only catches and sensors from that 5-day period are removed!
+
+EXAMPLE 3: GDPR with date limit
+delete_vessel_data("NLD123456", "GDPR request", "Owner",
+                   dry_run = TRUE,
+                   date_to = "2023-12-31")  # Only old data
+→ Complies with deletion request
+→ Keeps recent data for ongoing operations!
+
+WHY THIS IS POWERFUL:
+- Maximum Control: Delete exactly what you need, nothing more
+- Minimize Impact: Keep as much valid data as possible
+- Compliance: Meet legal requirements without over-deleting
+- Precision: Target exact combinations of type and time
+
+================================================================================
+NEW FEATURE 4: Column Headers in Deletion Reports
+================================================================================
+
+Deletion reports now show what COLUMNS/FIELDS are in the affected data!
+
+EXAMPLE OUTPUT:
+
+============================================================
+VESSEL DATA DELETION REPORT
+============================================================
+Deletion ID: DEL_20251211_140523
+Vessel ID: NLD123456
+...
+
+RAW DATA:
+--------------------------------------------------------------------
+  TRIPS: 33 rows found (would be deleted)
+    Columns (11): trip_id, vessel_id, departure_date, arrival_date, 
+                  departure_port, arrival_port, fishing_days, 
+                  trip_duration_hours, status, fetch_date, fetch_timestamp
+
+  CATCHES: 210 rows found (would be deleted)
+    Columns (12): catch_id, trip_id, vessel_id, catch_date, catch_time,
+                  species, weight_kg, latitude, longitude, fishing_zone,
+                  gear_type, fetch_date
+
+  SENSORS: 4247 rows found (would be deleted)
+    Columns (9): sensor_id, trip_id, vessel_id, timestamp, sensor_type,
+                 value, unit, date, fetch_date
+--------------------------------------------------------------------
+
+WHY THIS IS USEFUL:
+- Verification: See exactly what fields will be affected
+- Transparency: Know what data you're deleting
+- Audit Trail: Document what columns were in deleted data
+- Debugging: Verify correct data type is being targeted
+- Documentation: Include in deletion certificates
+
+================================================================================
+HOW TO USE THE NEW FEATURES
+================================================================================
+
+STEP 1: Always start with dry_run = TRUE
+  preview <- delete_vessel_data(
+    vessel_id = "NLD123456",
+    reason = "Test",
+    requested_by = "Me",
+    dry_run = TRUE,                        # See what WOULD happen
+    data_types = c("sensors"),             # Optional: select types
+    date_from = "2024-01-01",              # Optional: date filter
+    date_to = "2024-12-31"                 # Optional: date filter
+  )
+
+STEP 2: Review the output
+  - Check row counts: Does it match expectations?
+  - Check column headers: Right data type?
+  - Check date filter: Correct period?
+  - Check data types: Right selection?
+
+STEP 3: If looks good, execute
+  actual <- delete_vessel_data(
+    vessel_id = "NLD123456",
+    reason = "Test",
+    requested_by = "Me",
+    dry_run = FALSE,                       # NOW actually delete
+    data_types = c("sensors"),
+    date_from = "2024-01-01",
+    date_to = "2024-12-31"
+  )
+
+STEP 4: Verify
+  verify_vessel_deletion("NLD123456")
+
+STEP 5: Document
+  generate_deletion_certificate(actual$deletion_id)
+
+================================================================================
+PARAMETER REFERENCE
+================================================================================
+
+delete_vessel_data(
+  vessel_id,                 # REQUIRED: Which vessel
+  reason,                    # REQUIRED: Why deleting
+  requested_by,              # REQUIRED: Who requested
+  dry_run = TRUE,            # RECOMMENDED: Preview first!
+  
+  # NEW PARAMETERS:
+  data_types = c("trips", "catches", "sensors"),  # Which data types
+  date_from = NULL,                               # Delete from this date
+  date_to = NULL,                                 # Delete up to this date
+  
+  # EXISTING:
+  subfolder = NULL           # If data is in subfolder
+)
+
+DEFAULT BEHAVIOR (if you don't specify new parameters):
+- data_types: Defaults to ALL types (trips, catches, sensors)
+- date_from/date_to: No date filter, deletes ALL dates
+→ Same as before - deletes everything for the vessel
+
+================================================================================
+EXAMPLES FOR COMMON SCENARIOS
+================================================================================
+
+SCENARIO 1: GDPR "Right to be Forgotten"
+  → Delete everything
+  delete_vessel_data(vessel_id, "GDPR", "Owner", dry_run = FALSE)
+
+SCENARIO 2: Sensor was broken for a week
+  → Delete only sensor data from that week
+  delete_vessel_data(vessel_id, "Broken sensor", "Tech", dry_run = FALSE,
+                     data_types = c("sensors"),
+                     date_from = "2024-03-15", date_to = "2024-03-22")
+
+SCENARIO 3: 5-year data retention policy
+  → Delete all data older than 5 years
+  delete_vessel_data(vessel_id, "Retention policy", "Compliance", 
+                     dry_run = FALSE, date_to = "2020-01-01")
+
+SCENARIO 4: Owner wants privacy but allows research
+  → Delete sensors, keep trips and catches
+  delete_vessel_data(vessel_id, "Privacy", "Owner", dry_run = FALSE,
+                     data_types = c("sensors"))
+
+SCENARIO 5: Bad catch data during trial
+  → Delete only catches from trial period
+  delete_vessel_data(vessel_id, "Trial cleanup", "Manager", dry_run = FALSE,
+                     data_types = c("catches"),
+                     date_from = "2023-01-01", date_to = "2023-01-31")
+
+================================================================================
+WHERE TO LEARN MORE
+================================================================================
+
+07_deletion_examples.R    - 10 detailed examples with explanations
+06_test_workflow.R        - See it in action in the test suite
+04_example_workflow.R     - Updated with new features
+README.md                 - Quick reference
+TROUBLESHOOTING.txt       - Solutions to common issues
+
+================================================================================
+SUMMARY
+================================================================================
+
+The deletion system is now MUCH more flexible:
+
+✓ Delete specific data types (not always everything)
+✓ Delete by date range (surgical precision)
+✓ Combine filters (maximum control)
+✓ See column headers (transparency)
+✓ Better reports (more informative)
+✓ Backward compatible (old code still works!)
+
+This gives you the control you need for:
+- Data retention policies
+- Privacy compliance  
+- Quality control
+- Selective deletions
+- GDPR "right to be forgotten"
+
+All while preserving as much valid data as possible!
+
+================================================================================

@@ -1,0 +1,185 @@
+================================================================================
+ONEDRIVE INTEGRATION GUIDE
+================================================================================
+
+This system stores your code in Git and your data in OneDrive, giving you
+the best of both worlds!
+
+================================================================================
+HOW IT WORKS
+================================================================================
+
+STEP 1: You set your OneDrive path ONCE in 00_setup.R:
+
+  onedrive_path <- "C:/Users/YourName/OneDrive/DIGIvloot - data - data"
+
+STEP 2: Run setup - this creates folders in OneDrive and a config file locally
+
+  source("00_setup.R")
+
+STEP 3: From then on, you NEVER type the OneDrive path again!
+
+  # These functions automatically use OneDrive:
+  save_poseidat_data(trips_data, "trips")
+  trips <- load_poseidat_data("trips")
+  
+  # Data goes to: C:/Users/.../OneDrive/DIGIvloot - data - data/raw/trips/
+  # But you just write: save_poseidat_data(trips_data, "trips")
+
+================================================================================
+FILE LOCATIONS
+================================================================================
+
+YOUR GIT FOLDER (Version Controlled)
+────────────────────────────────────
+Location: Your R project directory
+Contents: 
+  - All R scripts (00_setup.R, 01_api_functions.R, etc.)
+  - README.md
+  - config.json (stores OneDrive path)
+  - env_template.txt
+
+Why here? 
+  ✓ Version controlled with git
+  ✓ No large data files
+  ✓ Easy to share code with collaborators
+  ✓ Small file size
+
+
+YOUR ONEDRIVE FOLDER (Data Storage)
+────────────────────────────────────
+Location: C:/Users/.../OneDrive/DIGIvloot - data - data/
+Contents:
+  - raw/trips/*.parquet       (fishing trip data)
+  - raw/catches/*.parquet     (catch data)
+  - raw/sensors/*.parquet     (sensor readings)
+  - processed/*.parquet       (your analysis results)
+  - audit/deletions/*         (GDPR deletion logs)
+  - outputs/reports/*         (your reports)
+  - outputs/figures/*         (your plots)
+
+Why here?
+  ✓ Automatically backed up by OneDrive
+  ✓ Synced across devices
+  ✓ Can handle large files
+  ✓ Not in git (keeps repo small)
+  ✓ Shared with team via OneDrive
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+You write simple code - OneDrive path is handled automatically:
+
+# Fetch and save
+trips <- get_trips(vessels, "2024-01-01", "2024-12-31")
+save_poseidat_data(trips, "trips", c("2024-01-01", "2024-12-31"))
+# → Saves to: C:/.../OneDrive/DIGIvloot - data - data/raw/trips/trips_2024-01-01_2024-12-31.parquet
+
+# Load data
+trips <- load_poseidat_data("trips")
+# → Loads from: C:/.../OneDrive/DIGIvloot - data - data/raw/trips/*.parquet
+
+# Create processed data
+trip_summary <- create_trip_summary(save_output = TRUE)
+# → Saves to: C:/.../OneDrive/DIGIvloot - data - data/processed/trip_summary.parquet
+
+# Delete vessel data (GDPR)
+delete_vessel_data(vessel_id, reason, requested_by, dry_run = FALSE)
+# → Updates files in OneDrive
+# → Logs to: C:/.../OneDrive/DIGIvloot - data - data/audit/deletions/
+
+================================================================================
+BENEFITS OF THIS SETUP
+================================================================================
+
+✓ CLEAN GIT REPO
+  - Only code files in git
+  - No large data files
+  - No merge conflicts on data
+  - Easy to clone and share
+
+✓ AUTOMATIC BACKUP
+  - OneDrive automatically backs up your data
+  - Synced across your devices
+  - Can recover deleted/old versions
+
+✓ EASY COLLABORATION
+  - Share OneDrive folder with team
+  - Everyone gets same data
+  - Code separately version controlled
+
+✓ SIMPLE CODE
+  - Never type long OneDrive paths
+  - All functions handle paths automatically
+  - Change OneDrive location? Update config once, done!
+
+✓ LARGE FILES OK
+  - Parquet files can be big
+  - OneDrive handles them fine
+  - Git stays fast and lean
+
+================================================================================
+CHANGING ONEDRIVE PATH
+================================================================================
+
+If you need to change your OneDrive path later:
+
+1. Edit 00_setup.R
+2. Update the onedrive_path variable
+3. Run: source("00_setup.R")
+4. Done! All functions now use the new path
+
+The config.json file will be updated automatically.
+
+================================================================================
+SHARING WITH COLLABORATORS
+================================================================================
+
+To share this system with a colleague:
+
+FOR THEM:
+1. Give them the R scripts (from git)
+2. Share your OneDrive folder "DIGIvloot - data - data" with them
+3. They edit 00_setup.R with THEIR OneDrive path:
+   "C:/Users/TheirName/OneDrive/DIGIvloot - data - data"
+4. They run source("00_setup.R")
+5. Done! They can now use all functions
+
+OneDrive will sync the data to their computer automatically.
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: "Configuration file not found"
+FIX: Run source("00_setup.R") first
+
+ISSUE: "OneDrive path does not exist"  
+FIX: Check spelling of path in 00_setup.R
+     Make sure you use forward slashes: C:/Users/... 
+     NOT backslashes: C:\Users\...
+
+ISSUE: Can't find data files
+FIX: Check that OneDrive has finished syncing
+     Look in Windows Explorer to verify files are there
+
+ISSUE: Want to use different OneDrive folder
+FIX: Edit onedrive_path in 00_setup.R
+     Run source("00_setup.R") again
+
+================================================================================
+SUMMARY
+================================================================================
+
+Set path once → Never type it again!
+
+Your code stays clean and simple, while all your data is safely stored
+in OneDrive, backed up and synced across devices.
+
+This is the recommended setup for any data science project:
+- Code in git
+- Data in OneDrive/cloud storage
+- Keep them separate, keep them simple!
+
+================================================================================

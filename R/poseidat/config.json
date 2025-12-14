@@ -1,0 +1,13 @@
+{
+  "onedrive_base": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data",
+  "base_url": "https://poseidat-journal-tst.m-catch.com/api/v1",
+  "token_env_var": "POSEIDAT_TOKEN",
+  "raw_data_path": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data/raw",
+  "processed_data_path": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data/processed",
+  "audit_path": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data/audit",
+  "outputs_path": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data/outputs",
+  "cache_path": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data/cache",
+  "max_retries": 3,
+  "rate_limit_delay": 0.5,
+  "date_format": "%Y-%m-%d"
+}

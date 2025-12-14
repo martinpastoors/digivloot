@@ -1,0 +1,183 @@
+================================================================================
+POSEIDAT DATA MANAGEMENT SYSTEM - GETTING STARTED
+================================================================================
+
+You now have a complete R-based system for managing Poseidat data with:
+✓ API integration with bearer token authentication
+✓ Parquet file storage (efficient and fast)
+✓ Tidyverse-compatible workflows
+✓ GDPR-compliant data deletion
+✓ Full audit trail
+
+================================================================================
+FILES INCLUDED
+================================================================================
+
+00_setup.R                  - Initial setup (run this first!)
+01_api_functions.R          - Fetch data from Poseidat API
+02_storage_functions.R      - Save/load Parquet files
+03_deletion_functions.R     - Delete vessel data (GDPR compliance)
+04_example_workflow.R       - Complete usage examples
+README.md                   - Full documentation
+GETTING_STARTED.txt         - This file
+
+================================================================================
+QUICK START (6 STEPS)
+================================================================================
+
+STEP 1: Download all files to your R project directory
+
+STEP 2: Set your OneDrive path
+  Open 00_setup.R in a text editor
+  Find line ~18 and update with YOUR OneDrive path:
+  
+  onedrive_path <- "C:/Users/YourName/OneDrive/DIGIvloot - data - data"
+  
+  Save the file.
+
+STEP 3: Run setup
+  > source("00_setup.R")
+  
+  This creates the folder structure in OneDrive and installs packages.
+
+STEP 4: Configure your bearer token
+  > usethis::edit_r_environ()
+  
+  Add this line (replace with your actual token):
+  POSEIDAT_TOKEN=your_bearer_token_here
+  
+  Save, close, and RESTART R
+
+STEP 5: Load the functions
+  > source("01_api_functions.R")
+  > source("02_storage_functions.R")
+  > source("03_deletion_functions.R")
+
+STEP 6: Start fetching data!
+  > vessels <- c("NLD123456", "NLD789012")
+  > all_data <- get_all_vessel_data(vessels, "2024-01-01", "2024-12-31")
+  > save_all_poseidat_data(all_data, c("2024-01-01", "2024-12-31"))
+
+================================================================================
+FOLDER STRUCTURE (CREATED AUTOMATICALLY)
+================================================================================
+
+YOUR GIT FOLDER (version controlled code):
+your_project/
+├── 00_setup.R
+├── 01_api_functions.R
+├── 02_storage_functions.R
+├── 03_deletion_functions.R
+├── 04_example_workflow.R
+├── README.md
+├── config.json              # Points to your OneDrive location
+└── env_template.txt
+
+YOUR ONEDRIVE FOLDER (data storage):
+C:/Users/.../DIGIvloot - data - data/
+├── raw/
+│   ├── trips/        # Trip data (Parquet files)
+│   ├── catches/      # Catch data (Parquet files)
+│   └── sensors/      # Sensor data (Parquet files)
+├── processed/        # Your analysis outputs
+├── audit/           # Deletion logs (GDPR compliance)
+│   └── deletions/
+├── outputs/         # Reports and figures
+│   ├── reports/
+│   └── figures/
+└── cache/           # Temporary files
+
+WHY THIS SETUP?
+✓ Code in git (small, version controlled)
+✓ Data in OneDrive (large files, backed up, synced)
+✓ No long paths in your code - just use "data" or "outputs"
+✓ Easy collaboration - share OneDrive folder with team
+
+================================================================================
+KEY FUNCTIONS
+================================================================================
+
+FETCHING DATA:
+  get_trips(vessel_ids, date_from, date_to)
+  get_catches(vessel_ids, date_from, date_to)
+  get_sensors(vessel_ids, date_from, date_to)
+  get_all_vessel_data(vessel_ids, date_from, date_to)
+
+SAVING DATA:
+  save_poseidat_data(data, "trips", c("2024-01-01", "2024-01-31"))
+  save_all_poseidat_data(all_data, date_range)
+
+LOADING DATA:
+  load_poseidat_data("trips")
+  load_all_poseidat_data()
+
+DATA DELETION (GDPR):
+  delete_vessel_data(vessel_id, reason, requested_by, dry_run = TRUE)
+  verify_vessel_deletion(vessel_id)
+  generate_deletion_certificate(deletion_id)
+
+================================================================================
+TYPICAL WORKFLOW
+================================================================================
+
+1. FETCH DATA
+   vessels <- c("NLD123456", "NLD789012")
+   data <- get_all_vessel_data(vessels, "2024-01-01", "2024-12-31")
+
+2. SAVE TO PARQUET
+   save_all_poseidat_data(data, c("2024-01-01", "2024-12-31"))
+
+3. LOAD WHEN NEEDED
+   trips <- load_poseidat_data("trips")
+   catches <- load_poseidat_data("catches")
+
+4. ANALYZE
+   trip_summary <- trips |>
+     left_join(catches |> group_by(trip_id) |> summarise(...))
+
+5. UPDATE PERIODICALLY
+   updated <- update_poseidat_data(vessels, "trips")
+
+================================================================================
+GDPR COMPLIANCE
+================================================================================
+
+If a vessel owner requests data deletion:
+
+1. DRY RUN (preview):
+   delete_vessel_data("NLD123456", "Owner request", "John Smith", dry_run = TRUE)
+
+2. EXECUTE:
+   report <- delete_vessel_data("NLD123456", "Owner request", "John Smith", dry_run = FALSE)
+
+3. VERIFY:
+   verify_vessel_deletion("NLD123456")
+
+4. CERTIFICATE:
+   generate_deletion_certificate(report$deletion_id)
+
+All deletions are logged in: data/audit/deletions/
+
+================================================================================
+IMPORTANT NOTES
+================================================================================
+
+✓ All data goes to OneDrive automatically - you never type the path!
+✓ API parameter names might need adjustment based on actual API
+✓ Date column names in functions may need updating for your data
+✓ Always use dry_run = TRUE before deleting data
+✓ Keep raw and processed data separate
+✓ Parquet files are efficient and work great with large datasets
+✓ See 04_example_workflow.R for detailed examples
+✓ Your code refers to "data" but files are stored in OneDrive
+
+================================================================================
+NEED HELP?
+================================================================================
+
+1. Read README.md for complete documentation
+2. Check 04_example_workflow.R for usage examples
+3. Review function comments in source files
+4. API docs: https://poseidat-journal-tst.m-catch.com/docs
+
+================================================================================

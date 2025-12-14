@@ -1,0 +1,261 @@
+================================================================================
+TESTING GUIDE - Using Mock Data Before Real API Access
+================================================================================
+
+Since you don't have access to real Poseidat data yet, you can test all your
+functions using realistic mock (fake) data!
+
+================================================================================
+NEW FILES FOR TESTING
+================================================================================
+
+05_mock_data_generator.R    - Generates realistic fake Poseidat data
+06_test_workflow.R           - Complete testing workflow
+
+================================================================================
+HOW TO TEST YOUR SYSTEM
+================================================================================
+
+OPTION 1: Quick Test (Recommended First)
+─────────────────────────────────────────
+
+1. Make sure you've run setup:
+   source("00_setup.R")
+
+2. Load the mock data generator:
+   source("05_mock_data_generator.R")
+
+3. Run the quick test:
+   test_mock_data()
+   
+   This generates a small dataset and shows you what it looks like.
+
+4. Generate your own mock data:
+   mock_data <- generate_mock_poseidat_data(
+     n_trips = 100,
+     vessel_ids = c("NLD123456", "NLD789012", "NLD345678"),
+     start_date = "2024-01-01",
+     end_date = "2024-12-31"
+   )
+
+5. Now you have mock data with:
+   - mock_data$trips       (trip records)
+   - mock_data$catches     (catch records)
+   - mock_data$sensors     (sensor readings)
+
+6. Test your storage functions:
+   save_all_poseidat_data(mock_data, c("2024-01-01", "2024-12-31"))
+   trips <- load_poseidat_data("trips")
+
+
+OPTION 2: Full Testing Workflow (Comprehensive)
+────────────────────────────────────────────────
+
+Run the complete test workflow:
+
+   source("06_test_workflow.R")
+
+This will automatically:
+✓ Generate mock data (100 trips)
+✓ Save it to Parquet files
+✓ Load it back
+✓ Test filtering by vessel and date
+✓ Create processed datasets
+✓ Run analysis examples
+✓ Test deletion functions (dry run)
+✓ Generate a visualization
+✓ Show storage statistics
+
+You'll see all the results printed to the console!
+
+================================================================================
+WHAT THE MOCK DATA LOOKS LIKE
+================================================================================
+
+TRIPS DATA:
+┌──────────────┬────────────┬────────────────┬─────────────────┬──────────────┐
+│ trip_id      │ vessel_id  │ departure_date │ departure_port  │ fishing_days │
+├──────────────┼────────────┼────────────────┼─────────────────┼──────────────┤
+│ TRIP_000001  │ NLD123456  │ 2024-01-05     │ IJmuiden        │ 7            │
+│ TRIP_000002  │ NLD789012  │ 2024-01-08     │ Scheveningen    │ 5            │
+│ TRIP_000003  │ NLD345678  │ 2024-01-12     │ Urk             │ 3            │
+└──────────────┴────────────┴────────────────┴─────────────────┴──────────────┘
+
+CATCHES DATA:
+┌───────────────────┬──────────────┬────────────┬──────────┬───────────┐
+│ catch_id          │ trip_id      │ species    │ weight_kg│ latitude  │
+├───────────────────┼──────────────┼────────────┼──────────┼───────────┤
+│ CATCH_TRIP_..._001│ TRIP_000001  │ HER        │ 450.3    │ 53.2145   │
+│ CATCH_TRIP_..._002│ TRIP_000001  │ COD        │ 320.8    │ 53.4521   │
+└───────────────────┴──────────────┴────────────┴──────────┴───────────┘
+
+SENSORS DATA:
+┌──────────────────┬──────────────┬────────────────────┬──────────────────┬───────┐
+│ sensor_id        │ trip_id      │ timestamp          │ sensor_type      │ value │
+├──────────────────┼──────────────┼────────────────────┼──────────────────┼───────┤
+│ SENSOR_GPS_LAT...│ TRIP_000001  │ 2024-01-05 08:00:00│ gps_latitude     │ 53.21 │
+│ SENSOR_GPS_LON...│ TRIP_000001  │ 2024-01-05 08:00:00│ gps_longitude    │ 4.52  │
+│ SENSOR_LINE_...  │ TRIP_000001  │ 2024-01-05 08:00:00│ line_length      │ 0.0   │
+│ SENSOR_GPS_LAT...│ TRIP_000001  │ 2024-01-05 08:01:00│ gps_latitude     │ 53.22 │
+│ SENSOR_GPS_LON...│ TRIP_000001  │ 2024-01-05 08:01:00│ gps_longitude    │ 4.53  │
+│ SENSOR_LINE_...  │ TRIP_000001  │ 2024-01-05 08:01:00│ line_length      │ 245.3 │
+└──────────────────┴──────────────┴────────────────────┴──────────────────┴───────┘
+
+The data is realistic and follows typical fishing vessel patterns!
+
+SENSOR TYPES INCLUDED:
+- gps_latitude: Vessel latitude position (recorded every minute)
+- gps_longitude: Vessel longitude position (recorded every minute)
+- line_length: Fishing line length in meters (recorded every minute)
+  * 0-20m when not fishing (line retracted)
+  * 50-500m when actively fishing (line deployed)
+- temperature: Water/air temperature (periodic, every ~15-30 min)
+- speed: Vessel speed in knots (periodic)
+- fuel_consumption: Engine fuel usage (periodic)
+- engine_rpm: Engine revolutions per minute (periodic)
+
+GPS and line length sensors generate much more data (every minute) to 
+simulate realistic high-frequency sensor readings!
+
+================================================================================
+CUSTOMIZE MOCK DATA
+================================================================================
+
+You can adjust the mock data generation:
+
+# More trips
+mock_data <- generate_mock_poseidat_data(n_trips = 200)
+
+# Different vessels
+mock_data <- generate_mock_poseidat_data(
+  vessel_ids = c("NLD111111", "NLD222222", "NLD333333", "NLD444444")
+)
+
+# Different date range
+mock_data <- generate_mock_poseidat_data(
+  start_date = "2023-01-01",
+  end_date = "2023-12-31"
+)
+
+# All together
+mock_data <- generate_mock_poseidat_data(
+  n_trips = 500,
+  vessel_ids = c("NLD111", "NLD222", "NLD333"),
+  start_date = "2023-01-01",
+  end_date = "2024-12-31"
+)
+
+================================================================================
+USING SWAGGERUI (When You Have API Access)
+================================================================================
+
+Once your Poseidat API is ready with real data:
+
+1. Open SwaggerUI in your browser:
+   https://poseidat-journal-tst.m-catch.com/docs
+
+2. You'll see a list of available endpoints like:
+   - GET /trips
+   - GET /catches
+   - GET /sensors
+   - etc.
+
+3. For each endpoint, click "Try it out"
+
+4. Enter your parameters:
+   - vessel_id: NLD123456
+   - date_from: 2024-01-01
+   - date_to: 2024-01-31
+
+5. Click "Execute" - SwaggerUI will:
+   - Show you the exact API request
+   - Show you the response data
+   - Let you test without writing code
+
+6. Once you confirm it works in SwaggerUI, your R functions will work too!
+   Just replace mock data with real API calls:
+   
+   # Instead of:
+   mock_data <- generate_mock_poseidat_data()
+   
+   # Use:
+   real_data <- get_all_vessel_data(vessels, "2024-01-01", "2024-12-31")
+
+================================================================================
+TRANSITION FROM MOCK TO REAL DATA
+================================================================================
+
+When real data becomes available:
+
+BEFORE (Testing with mock data):
+────────────────────────────────
+source("05_mock_data_generator.R")
+mock_data <- generate_mock_poseidat_data(n_trips = 100)
+save_all_poseidat_data(mock_data, date_range)
+
+AFTER (Using real API):
+───────────────────────
+source("01_api_functions.R")
+real_data <- get_all_vessel_data(vessels, date_from, date_to)
+save_all_poseidat_data(real_data, c(date_from, date_to))
+
+Everything else stays the same! Your analysis code doesn't change.
+
+================================================================================
+WHAT TO CHECK WHEN REAL API IS AVAILABLE
+================================================================================
+
+1. Column Names:
+   - Check if real API returns same column names
+   - You might need to adjust date_column names in functions
+   - Example: "departure_date" vs "departureDate"
+
+2. Date Format:
+   - Check if dates are in "YYYY-MM-DD" format
+   - May need to convert with: as.Date(date_column)
+
+3. API Parameters:
+   - Check actual parameter names in SwaggerUI
+   - Might be "vessel_id" or "vesselId" or "vessel_ids"
+   - Update functions if needed
+
+4. Response Structure:
+   - API might return nested data
+   - May need to adjust parsing in get_poseidat() function
+
+================================================================================
+TROUBLESHOOTING MOCK DATA
+================================================================================
+
+ISSUE: "Function not found"
+FIX: Make sure you've loaded the script:
+     source("05_mock_data_generator.R")
+
+ISSUE: "Cannot find config"
+FIX: Run setup first:
+     source("00_setup.R")
+
+ISSUE: Mock data doesn't look right
+FIX: This is OK! Real data will have different structure.
+     Mock data is just for testing the storage/analysis workflow.
+
+ISSUE: Want different data patterns
+FIX: Edit the generate_mock_* functions in 05_mock_data_generator.R
+     to match your expectations
+
+================================================================================
+SUMMARY
+================================================================================
+
+✓ Use mock data NOW to test your entire system
+✓ Practice your analysis workflows
+✓ Make sure storage/loading works correctly
+✓ Test deletion functions
+✓ Create visualizations and reports
+✓ When real API is ready, just swap mock_data for API calls
+✓ Use SwaggerUI to test API directly in browser
+✓ Everything will work the same way!
+
+Happy testing! 🚢📊
+
+================================================================================
