@@ -1,0 +1,6 @@
+# Poseidat API Configuration
+# Copy this to your .Renviron file (use: usethis::edit_r_environ())
+# Replace YOUR_TOKEN_HERE with your actual bearer token
+
+POSEIDAT_TOKEN=YOUR_TOKEN_HERE
+
