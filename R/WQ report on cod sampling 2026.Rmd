@@ -1,0 +1,475 @@
+---
+output:
+  word_document:
+    reference_docx: ../report_template_v1.10.dotx
+---
+
+
+```{r setup, include=FALSE}
+
+# ==========================================================================================================
+# Generate WQ cod sampling overview
+# 
+# 28/05/2024 first coding
+# 08/01/2026 adapted for 2025 sampling
+# 17/07/2026 adapted for cod sampling
+# ==========================================================================================================
+
+knitr::opts_chunk$set(echo = FALSE,	message = FALSE,	warning = FALSE,	comment = "",	crop = TRUE )
+knitr::opts_chunk$set(fig.width=10) 
+
+options(dplyr.summarise.inform = FALSE)
+
+# Reset lists
+rm(list=ls())
+
+# Libraries
+library(rmarkdown)                   # note: requires knitr 1.21
+
+require(tidyverse, quietly=TRUE)     # combined package of dplyr, tidyr, ggplot, readr, purrr and tibble
+require(lubridate, quietly=TRUE)     # data handling
+require(reshape2, quietly=TRUE)      # reshaping data; e.g. cast
+require(RColorBrewer)                # colour schemes
+library(viridis)
+library(pander)
+library(flextable)                   # nicely formatted tables for Word
+library(cowplot)
+library(patchwork)                   # composer of plots
+
+flextable::set_flextable_defaults(
+  font.size    = 9,
+  padding      = 3,
+  na_str       = "."
+)
+
+library(captioner)                   # for captions
+tab_nums <- captioner::captioner(prefix = "Table " , levels=1, type=c("n"), infix=".")
+fig_nums <- captioner::captioner(prefix = "Figure ", levels=1, type=c("n"), infix=".")
+
+# Source all the utils
+source("../../flyshoot/R/FLYSHOOT utils.r")
+
+spatialdir <- "C:/Users/MartinPastoors/OneDrive - Martin Pastoors/DATA/RDATA"
+
+# spatial data files
+
+load(file.path(spatialdir, "world_mr_sf.RData"))
+load(file.path(spatialdir, "world_mr_df.RData"))
+load(file.path(spatialdir, "rect_lr_sf.RData"))
+load(file.path(spatialdir, "fao_df.RData"))
+
+load(file.path(spatialdir, "world_lr_df.RData"))
+
+load(file.path(spatialdir, "asfis.RData"))
+
+# ===============================================================================
+#  Load data
+# ===============================================================================
+
+# set onedrive directory
+onedrive <- file.path(get_onedrive(team="Martin Pastoors", site="WQ - General"), "2026")
+
+df <-
+  readxl::read_excel(
+    path  = file.path(onedrive, "Kabeljauw onderzoek 2026.xlsx"),
+    sheet = "Haul" 
+  ) %>% 
+  lowcase() %>% 
+  drop_na(date) %>% 
+  rename(lon=plotlon, lat=plotlat) %>% 
+  mutate(
+    year  = lubridate::year(date),
+    month = lubridate::month(date),
+    week  = lubridate::week(date),
+    yday  = lubridate::yday(date),
+  )
+
+# calculate the scaling of plots
+
+lon_range <- range(df$lon, na.rm = TRUE)
+lat_range <- range(df$lat, na.rm = TRUE)
+
+# Add 10% buffer on each side
+lon_buffer <- diff(lon_range) * 0.1
+lat_buffer <- diff(lat_range) * 0.1
+
+xmin <- floor(lon_range[1] - lon_buffer)
+xmax <- ceiling(lon_range[2] + lon_buffer)
+ymin <- floor((lat_range[1] - lat_buffer) * 2) / 2
+ymax <- ceiling((lat_range[2] + lat_buffer) * 2) / 2
+
+# Calculate actual distances
+xdistance <- icosa::arcdist(p1 = c(xmin, ymin), p2 = c(xmax, ymin))
+ydistance <- icosa::arcdist(p1 = c(xmin, ymin), p2 = c(xmin, ymax))
+data_aspect <- ydistance / xdistance
+
+xlim <- c(xmin, xmax); ylim <- c(ymin, ymax)
+
+```
+
+
+**WQ 2026 research on the genetic population structure of cod in the North Sea**
+
+```{r, echo=FALSE, out.width = "100%", fig.align="center", message=FALSE, warning=FALSE, cache=FALSE}
+  knitr::include_graphics("../UK153 20260330_1200_007.JPG")
+
+```
+
+<br><br>
+
+<div style="float: left; width: 60%;">
+
+**Prepared by:** Martin Pastoors & Ewout Blom
+
+**Organizations:** MPFF, WMR & DTU-Aqua
+
+**Project:** WQ COD 2026 – Genetic Diversity of Cod (GenDC)
+
+**Date:** `r format(Sys.time(), '%d %B %Y')`
+
+</div>
+
+<br><br>
+
+<br><br>
+
+<br><br>
+
+<br><br>
+
+<br><br>
+
+<br><br>
+
+<br><br>
+
+```{r, echo=FALSE, fig.height=2.5, fig.align="left", message=FALSE, warning=FALSE, cache=FALSE}
+
+p1 <- cowplot::ggdraw() +
+      cowplot::draw_image("../MPFF logo with text.png", 
+                         x = 0.0, y = 0, 
+                         width = 0.9, height = 1, 
+                         hjust = 0.0, vjust = 0)  # Bottom-aligned, full height
+
+p2 <- cowplot::ggdraw() +
+      cowplot::draw_image("../Wageningen University and Research2.png", 
+                         x = 0.0, y = 0, 
+                         width = 0.9, height = 0.5,  # Half height
+                         hjust = 0.0, vjust = 0)  # Bottom-aligned
+
+patchwork::wrap_plots(p1, p2, widths = c(1, 2.5))
+
+# p1 <- cowplot::ggdraw() +
+#             cowplot::draw_image("../MPFF logo with text.png") # 332 x 399
+# p2 <- cowplot::ggdraw() +
+#             cowplot::draw_image("../Wageningen University and Research2.png") # 455 x 110
+# 
+# patchwork::wrap_plots(p1, p2, widths = c(0.5, 2.5))
+
+# print(patchwork::wrap_plots(p1 + theme(plot.margin = unit(c(0,30,0,0), "pt")),
+#                             p2 + theme(plot.margin = unit(c(0,0,0,30), "pt"))) +
+#         patchwork::plot_layout(widths=unit(c(150,400), "pt"))) 
+
+```
+
+
+# Introduction
+
+The ICES Benchmark Workshop on Northern Shelf Cod Stocks (WKNSCS) identified significant knowledge gaps regarding the population structure and spawning dynamics of cod in the North Sea, particularly in the central and southern North Sea. Current stock assessments treat North Sea cod as a single management unit, yet there is growing evidence that multiple spawning components may exist with different population dynamics and connectivity patterns. Understanding this genetic structure is essential for effective management and recovery of this commercially and ecologically important species.
+
+The EU-funded Genetic Diversity of Cod (GenDC) project, coordinated by DTU-Aqua, aims to address these knowledge gaps through genetic analysis of cod collected from spawning aggregations across different regions. By collecting samples from spawning cod, the project aims to identify distinct spawning components and assess their connectivity, directly supporting the development of more spatially refined stock assessment and management advice.
+
+Incidental catches of cod by demersal fishing vessels in the Eastern English Channel and the southern and central North Sea during the spawning season represent a unique and otherwise inaccessible sampling opportunity for the southern cod stock: dedicated research vessels alone cannot achieve the same spatial and temporal coverage across the full spawning season. Building on the model of fisher-led sampling that had previously proven effective for the mackerel spawning research conducted under scientific quota (WQ) in 2024 and 2025, we set up a similar programme for cod in 2026, in cooperation with Wageningen Marine Research (WMR) and DTU-Aqua.
+
+Here, we report on the sampling of cod by demersal (flyshoot) vessels during the 2026 spawning season, undertaken to contribute genetic and biological material to the GenDC project. Participating skippers were asked to assess the sex and maturity of cod encountered in their catches, to photograph and measure a subset of these fish, and to freeze spawning individuals together with their gonads for further processing at WMR and genetic analysis at DTU-Aqua.
+
+# Methods
+
+The aim of the cod research programme 2026 was to collect genetic and biological samples of cod during the spawning season (February-April 2026) in the eastern English Channel and the southern and central North Sea (ICES divisions 7d, 4c and 4b). In the original proposal we also wanted to sample cod during the mixed feeding season (July-September 2026) in the northern North Sea (4a, 2a, 3a), but this part of the proposal was rejected by RVO and hence not part of the final program. The target was to assess approximately 300 cod for sex and maturity, of which around 100 were expected to be in spawning condition. All material was delivered to Wageningen Marine Research (WMR) for processing and subsequent genetic analysis by DTU-Aqua within the GenDC project.
+
+Participating skippers and crew were asked to retain cod caught during their regular fishing operations and assess each fish for sex and maturity. For each spawning female, the crew was asked to photograph and measure the fish on a standardized measuring board (supplied to each vessel). Then the instruction was to take pictures of (a) the whole fish with the abdominal cavity opened, head at the zero point of the board; (b) a close-up of the opened abdominal cavity showing the gonads; and (c), where gonads were clearly visible, a close-up of the gonads themselves. A cod would be classified as being in spawning condition when the gonads were swollen and filled most of the abdominal cavity, with a granular orange to red-grey colour and a mixture of opaque and translucent, and sometimes hydrated or already released, eggs.
+
+Spawning females would then processed further: the gonads would be removed and placed in a small ziplock bag, and the whole fish together with the ziplock bag would be placed in a larger plastic bag and labelled with a freezer-proof sticker noting vessel, haul number, date, time, position, fish number, sex and spawning status. Samples would be frozen immediately and kept frozen at all times, separate from the rest of the catch. When samples had been collected during a trip, the skipper would notify Martin Pastoors (MPFF), who arranged temporary storage or pickup of the samples on return to port. MPFF coordinated the logistics from vessel to WMR, where the samples were processed according to the protocol supplied by DTU-Aqua and shipped to Copenhagen for genetic analysis.
+
+Sampling materials (measuring boards, standardized bags and labels) were supplied to each participating vessel, and skippers were briefed on the protocol prior to the start of sampling. The following vessels participated in the programme: UK150 (Polar), UK153 (Lub Senior), UK37 (Ursa Minor), OD1 (Maarten Jacob) and SCH63 (Quo Vadis).
+
+# Results 
+
+**Sampling overview**
+
+Sampling for cod was carried out during the 2026 spawning season (February-April) in the eastern English Channel. Only very few samples were collected due to the late instruction and the low encounter rate with cod.  
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "sampling1", 
+  level = 1, display = FALSE,
+  caption = "Cod sampling overview 2026")
+
+t <-
+  df %>%
+  group_by(year, month, week) %>% 
+  summarise(
+    nvessels  = n_distinct(vessel),
+    ntrips    = n_distinct(vessel, year, month, week),
+    nsamples  = sum(!is.na(photos))
+  ) %>% 
+  tidyr::pivot_longer(names_to = "variable", values_to = "data", nvessels:nsamples) %>% 
+  mutate(variable = factor(variable, levels=c("nvessels", "ntrips","nsamples"))) 
+
+t %>% 
+  reshape2::dcast(month+week ~ variable, sum, value.var = "data",  margins=c("month")) %>% 
+  flextable::flextable() %>% 
+  flextable::set_header_labels(
+    month    = "Month",
+    week     = "Week",
+    nvessels = "N vessels",
+    ntrips   = "N trips",
+    nsamples = "N samples"
+  ) %>% 
+  flextable::colformat_double(digits = 0) %>% 
+  flextable::theme_vanilla() %>% 
+  flextable::autofit()
+
+```
+_`r tab_nums("sampling1")`_
+
+
+**Characteristics of the sampled cod**
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+tab_nums(
+  name    = "char1", 
+  level = 1, display = FALSE,
+  caption = "Characteristics of the sampled cod")
+
+df %>%
+  group_by(year, month, week) %>% 
+  summarise(
+    nfemales      = sum(sex == "F"),
+    nmales      = sum(sex == "M"),
+    nunsexed      = sum(sex == "U"),
+    nspawning     = sum(spawning == "Y"),
+    meanlength    = mean(length, na.rm=TRUE)
+  ) %>% 
+  flextable::flextable() %>% 
+  flextable::set_header_labels(
+    year       = "Year",
+    month      = "Month",
+    week       = "Week",
+    nfemales   = "N females",
+    nmales   = "N males",
+    nunsexed   = "N unsexed",
+    nspawning  = "N spawning",
+    meanlength = "Mean length (cm)"
+  ) %>% 
+  flextable::colformat_double(j = c("year", "month", "week", "nfemales", "nspawning"), digits = 0) %>% 
+  flextable::colformat_double(j = "meanlength", digits = 1) %>% 
+  flextable::theme_vanilla() %>% 
+  flextable::autofit()
+
+```
+
+
+_`r tab_nums("char1")`_
+
+\newpage
+
+**Spatial overview of sampled cod (by week)**
+
+```{r echo=FALSE, fig.align="center", fig.asp=0.6, message=FALSE, warning=FALSE}
+
+
+fig_nums(
+  name    = "sampling1", 
+  level = 1, display = FALSE,
+  caption = "Number of sampled cod, by week.")
+  
+ggplot() +
+
+  theme_publication() +
+  theme(
+    text             = element_text(size=12),
+    plot.margin      = unit(c(0,0,0,0), "cm"),
+    legend.position  = "right",
+    legend.direction = "vertical"
+  ) +
+
+  coord_quickmap(xlim=xlim , ylim=ylim) +
+
+  geom_polygon(data=world_mr_df, aes(x=long, y=lat, group=group), fill = "grey75") +
+  geom_polygon(data=fao_df,   aes(long, lat, group=group), fill = NA, size=0.25, color="black") +
+
+  geom_jitter(data=df, 
+             aes(x=lon, y=lat, colour=spawning),
+             alpha = 0.8, width=0.2, height=0.1) +
+
+  labs(x = NULL, y = NULL, colour="",
+       title=paste("Cod sampling per week")) +
+  guides(size = guide_legend(nrow = 1)) + 
+  facet_wrap(~week, ncol=3)
+
+```
+
+_`r fig_nums("sampling1")`_
+
+
+# Discussion
+
+The aim of the cod research program 2026 was to collect genetic and biological samples from cod in the Eastern English Channel and the southern, central and northern North Sea, in support of the GenDC project's assessment of cod population structure and spawning components. Participating skippers were asked to assess the cod they encountered in their catches for sex and maturity, to photograph them and to measured a subset of these fish. If spawning individuals would be encountered during the spawning season (February-April), these would be frozen together with their gonads for further processing at WMR and genetic analysis at DTU-Aqua.
+
+The number of samples collected during the spawning season was much lower than the target of around 300 assessed and 100 spawning-stage cod set out in the original quota application. Two factors contributed to this. First, the instruction of participating skippers took place shortly before, and in some cases only just ahead of, the start of the spawning season, leaving limited time for the sampling protocol and photographing/labelling routine to become fully embedded in the vessels' normal operations. Second, and more importantly, the encounter rates of cod in the research area during the sampling period were lower than anticipated, so that even where skippers actively looked for cod in their catches, relatively few fish were available to sample. As a result, the number of photo- and frozen samples were so low, that they cannot really be used to inform on spawning behaviour in the Southern North Sea. 
+
+For any subsequent program of collecting cod samples, we will need to have earlier conversions with skippers and also provide earlier instruction to the skippers, ideally well before the start of the spawning season. This should be combined with continued monitoring of encounter rates across participating vessels.
+
+\newpage
+
+# Annex 1: overview of samples 
+
+```{r echo=FALSE, fig.align="center", fig.asp=1.2, message=FALSE, warning=FALSE}
+
+df %>%
+  dplyr::select(vessel, time, lon, lat, rect, area, year, week, sample, sex, spawning, length) %>% 
+  dplyr::mutate(time = format(time, "%H:%M")) %>% 
+  flextable::flextable() %>% 
+  flextable::set_header_labels(
+    vessel   = "Vessel",
+    time     = "Time",
+    lon      = "Lon",
+    lat      = "Lat",
+    rect     = "Rect",
+    area     = "Area",
+    year     = "Year",
+    week     = "Week",
+    sample   = "Sample",
+    sex      = "Sex",
+    spawning = "Spawning",
+    length   = "Length (cm)"
+  ) %>% 
+  flextable::colformat_double(j = c("lon", "lat"), digits = 2) %>% 
+  flextable::colformat_double(j = c("year", "week", "sample", "length"), digits = 0) %>% 
+  flextable::theme_vanilla() %>% 
+  flextable::fontsize(size = 8, part = "all") %>% 
+  flextable::autofit()
+
+```
+
+\newpage
+
+# Annex 2: individual samples of cod with location, date and status. 
+
+```{r annex2-match-pictures, echo=FALSE, message=FALSE, warning=FALSE}
+
+# ---------------------------------------------------------------------------
+# Filenames follow: vessel_yyyymmdd_hhmm_xxx[_A].jpg(eg)
+#   - xxx  = sample/fish number (zero-padded, e.g. "001")
+#   - _A   = optional letter (A-D) when several pictures exist per fish;
+#            absent when there is only one picture for that fish
+# haulid in df is already "vessel_yyyymmdd_hhmm", so we rebuild the same
+# key from the filename and join on haulid + fishnr (as integer, so
+# padding differences between "01" in fishid and "001" in the filename
+# don't matter).
+# ---------------------------------------------------------------------------
+
+photo_dir <- file.path(onedrive, "foto")   # <- adjust to your folder name if needed
+
+pictures <-
+  tibble(filename = list.files(photo_dir, pattern = "(?i)\\.jpe?g$")) %>%
+  tidyr::extract(
+    filename,
+    into   = c("vessel", "datestr", "timestr", "fishnrstr", "letter"),
+    regex  = "^([A-Za-z0-9]+)[_ ]([0-9]{8})_([0-9]{4})_([0-9]{2,3})(?:_([A-Za-z]))?\\.(?i:jpe?g)$",
+    remove = FALSE
+  ) %>%
+  mutate(
+    haulid   = paste(vessel, datestr, timestr, sep = "_"),
+    fishnr   = as.integer(fishnrstr),
+    fullpath = file.path(photo_dir, filename)
+  ) %>%
+  arrange(haulid, fishnr, letter)
+
+# collapse to one row per fish, holding all its picture paths in a list-column
+pictures_by_fish <-
+  pictures %>%
+  group_by(haulid, fishnr) %>%
+  summarise(pictures = list(fullpath), .groups = "drop")
+
+# attach to the sample data; keep only fish that were actually photographed
+samples <-
+  df %>%
+  filter(photos == "Y") %>%
+  left_join(pictures_by_fish, by = c("haulid", "fishnr")) %>%
+  arrange(date, time, sample)
+
+```
+
+```{r annex2-plots, echo=FALSE, fig.align="center", fig.asp=0.4, message=FALSE, warning=FALSE}
+
+for (i in seq_len(nrow(samples))) {
+
+  s <- samples[i, ]
+
+  # small location map, single point highlighted
+  p0 <-
+    ggplot() +
+    theme_publication() +
+    theme(
+      text        = element_text(size = 12),
+      plot.margin = unit(c(0.2, 0.2, 0.2, 0.2), "cm")
+    ) +
+    coord_quickmap(xlim = xlim, ylim = ylim) +
+    geom_polygon(data = world_mr_df, aes(x = long, y = lat, group = group),
+                 fill = "grey85", colour = "grey25") +
+    geom_point(data = s, aes(x = lon, y = lat), size = 2, colour = "red") +
+    labs(x = NULL, y = NULL)
+
+  # build one ggdraw panel per picture available for this fish (0-4)
+  fish_plots <- list()
+  fish_pics  <- s$pictures[[1]]
+
+  if (length(fish_pics) > 0) {
+    for (j in seq_along(fish_pics)) {
+      pl <- magick::image_read(fish_pics[j])
+      if (magick::image_info(pl)$height > magick::image_info(pl)$width) {
+        pl <- magick::image_rotate(pl, 90)
+      }
+      fish_plots[[j]] <- cowplot::ggdraw() + cowplot::draw_image(pl)
+    }
+  }
+
+  # arrange the pictures themselves: 1-2 pictures in a single row,
+  # 3-4 pictures in a 2x2 grid, so 4 pictures never get squeezed into one row
+  n_pics <- length(fish_plots)
+
+  if (n_pics == 0) {
+    picture_panel <- patchwork::plot_spacer()
+  } else if (n_pics <= 2) {
+    picture_panel <- patchwork::wrap_plots(fish_plots, ncol = n_pics)
+  } else {
+    picture_panel <- patchwork::wrap_plots(fish_plots, ncol = 2)
+  }
+
+  # map + picture panel are always combined in the same 1:3 width ratio,
+  # so the map itself renders at the same size for every sample regardless
+  # of how many pictures that sample has
+  title_text <- paste0(
+    "Sample: ", s$sample,
+    ", ", format(s$date, "%d/%m/%Y"), " ", format(s$time, "%H:%M"),
+    ", Haul: ", s$haulid,
+    ", Rect: ", s$rect, " (", s$area, ")",
+    ", Sex: ", s$sex,
+    ", Length: ", s$length, " cm",
+    ", Spawning: ", s$spawning
+  )
+
+  print(
+    patchwork::wrap_plots(list(p0, picture_panel), ncol = 2) +
+      patchwork::plot_layout(widths = c(1, 3)) +
+      patchwork::plot_annotation(title = stringr::str_wrap(title_text, width = 110))
+  )
+
+  cat("\n\n")
+}
+
+```
