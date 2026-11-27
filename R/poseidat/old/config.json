@@ -1,6 +1,6 @@
 {
   "onedrive_base": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data",
-  "base_url": "https://poseidat-journal-tst.m-catch.com/api/v1",
+  "base_url": "https://api.dbmatic.eu/api/v1",
   "token_env_var": "POSEIDAT_TOKEN",
   "raw_data_path": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data/raw",
   "processed_data_path": "C:/Users/MartinPastoors/Martin Pastoors/DIGIvloot - data - data/processed",

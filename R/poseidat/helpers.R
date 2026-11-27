@@ -1,0 +1,767 @@
+# helpers.R
+
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+# Page break -- a raw Word page-break element for docx output (the standard
+# pandoc/rmarkdown trick), falling back to \newpage / a CSS class if ever
+# knit to pdf_document / html_document instead. Used between the trend
+# chart and the histogram grid, and again at the end of each vessel.
+page_break <- function() {
+  if (isTRUE(knitr::pandoc_to("docx"))) {
+    cat('\n\n```{=openxml}\n<w:p><w:r><w:br w:type="page"/></w:r></w:p>\n```\n\n')
+  } else if (knitr::is_latex_output()) {
+    cat("\n\n\\newpage\n\n")
+  } else {
+    cat('\n\n<div class="page-break"></div>\n\n')
+  }
+}
+
+# ============================================================================
+# Lean raw loader for THIS report specifically
+#
+# .poseidat_load_data() reads every column of every matching raw file for
+# the vessel's whole history before we get any chance to filter it -- so
+# trimming columns/dates AFTER calling it doesn't help peak memory; the
+# expensive read already happened. This loader instead prunes files by
+# vessel and month BEFORE opening them (same approach as
+# .poseidat_scan_raw_daily()), and reads only the columns this report
+# needs via col_select, so both less is read from disk and less is held
+# in memory at once. Narrowing params$start_date/end_date now directly
+# reduces how many files get opened at all -- it's the single biggest
+# lever you have if a vessel's history is large.
+# ============================================================================
+.poseidat_load_report_raw <- function(vessel, start_date = NULL, end_date = NULL) {
+  
+  base    <- .onedrive()
+  raw_dir <- file.path(base, "raw")
+  
+  files <- character()
+  for (d in list.dirs(raw_dir, recursive = FALSE))
+    files <- c(files, list.files(d, pattern = "\\.parquet$", recursive = TRUE, full.names = TRUE))
+  if (length(files) == 0) return(tibble())
+  
+  # Match against the full path, not a constructed directory name -- the
+  # vessel's own directory isn't reliably underscored even though the
+  # filename inside it always is (see .poseidat_scan_raw_daily()).
+  pat   <- gsub(" ", "_", vessel)
+  files <- files[grepl(pat, files)]
+  if (length(files) == 0) return(tibble())
+  
+  if (!is.null(start_date) || !is.null(end_date)) {
+    ym      <- sub(".*/([0-9]{4})/([0-9]{2})/[^/]+$", "\\1-\\2-01", files)
+    ym_date <- suppressWarnings(as.Date(ym))
+    keep    <- !is.na(ym_date)
+    if (!is.null(start_date))
+      keep <- keep & (ym_date >= as.Date(format(as.Date(start_date), "%Y-%m-01")))
+    if (!is.null(end_date))
+      keep <- keep & (ym_date <= as.Date(format(as.Date(end_date), "%Y-%m-01")))
+    files <- files[keep]
+  }
+  if (length(files) == 0) return(tibble())
+  
+  need_cols <- c("device_id", "value_type", "datetime", "value_numeric",
+                 "latitude", "longitude",
+                 "traction_port", "traction_center", "traction_starboard",
+                 "scale_weight")
+  
+  pieces <- vector("list", length(files))
+  for (i in seq_along(files)) {
+    pieces[[i]] <- tryCatch(
+      arrow::read_parquet(files[i], col_select = dplyr::any_of(need_cols)),
+      error = \(e) tibble()
+    )
+  }
+  result <- bind_rows(pieces)
+  rm(pieces); gc(FALSE)
+  
+  if (!is.null(start_date)) result <- filter(result, as.Date(datetime) >= as.Date(start_date))
+  if (!is.null(end_date))   result <- filter(result, as.Date(datetime) <= as.Date(end_date))
+  
+  result
+}
+
+# Tukey's fences for one numeric vector -- shared by the table and graph
+# below, both of which now compute this per device/sensor in a loop
+# rather than via a group_by()+left_join() across the whole vessel at
+# once (that join briefly duplicates several extra columns across every
+# raw row, which is what was blowing up memory).
+.tukey_bounds <- function(x, k) {
+  q1  <- stats::quantile(x, 0.25, na.rm = TRUE)
+  q3  <- stats::quantile(x, 0.75, na.rm = TRUE)
+  iqr <- q3 - q1
+  c(lower = unname(q1 - k * iqr), upper = unname(q3 + k * iqr))
+}
+
+# Sensor-derived channels for which Tukey's fences don't make sense: a
+# vessel's position is naturally multi-modal (it visits different areas),
+# so IQR-based bounds -- built for a roughly single-cluster distribution --
+# flag legitimate travel as "outliers". Nothing gets removed for these
+# anywhere in the report (table, histograms, or the trend chart).
+NO_OUTLIER_TYPES <- c("Latitude", "Longitude")
+
+.bounds_for <- function(value_type, x, k) {
+  if (value_type %in% NO_OUTLIER_TYPES) return(c(lower = -Inf, upper = Inf))
+  .tukey_bounds(x, k)
+}
+
+# ---- Per-vessel sensor table -----------------------------------------------
+# One row per device x value_type: first/last observed date, raw count,
+# non-zero raw count, outlier count, and non-zero thinned count.
+# TEMPERATURE sensors are excluded (same as the graph and histograms).
+# TRAWL_TENSION ("towing force"), POSITION and SCALE are pivoted into plain
+# value_numeric rows first (see extra_pivoted_channels(), defined below)
+# since they store their reading in a named column, not value_numeric.
+#
+# This is a first-pass, sensor-agnostic outlier rule: flag anything outside
+# [Q1 - k*IQR, Q3 + k*IQR] (k = outlier_k, default 3, i.e. "extreme"
+# outliers only; use 1.5 for the conventional boxplot definition). Swap in
+# sensor-specific bounds (e.g. physically implausible FUEL_CONSUMPTION or
+# DEPTH values) once you know what "wrong" looks like for each value_type.
+vessel_sensor_table <- function(raw_v, thin_v, outlier_k) {
+  
+  raw_scalar <- raw_v |>
+    filter(!value_type %in% c("POSITION", "TRAWL_TENSION", "SCALE"),
+           !is.na(value_numeric),
+           !grepl("TEMP", value_type, ignore.case = TRUE)) |>
+    select(device_id, value_type, datetime, value_numeric)
+  
+  raw_combined <- bind_rows(raw_scalar, extra_pivoted_channels(raw_v))
+  rm(raw_scalar)
+  
+  groups <- distinct(raw_combined, device_id, value_type)
+  
+  rows <- vector("list", nrow(groups))
+  for (i in seq_len(nrow(groups))) {
+    g <- filter(raw_combined, device_id == groups$device_id[i], value_type == groups$value_type[i])
+    b <- .bounds_for(groups$value_type[i], g$value_numeric, outlier_k)
+    rows[[i]] <- tibble(
+      device_id     = groups$device_id[i],
+      value_type    = groups$value_type[i],
+      first_obs     = min(as.Date(g$datetime)),
+      last_obs      = max(as.Date(g$datetime)),
+      n_raw         = nrow(g),
+      n_raw_nonzero = sum(g$value_numeric != 0, na.rm = TRUE),
+      n_outliers    = sum(g$value_numeric < b["lower"] | g$value_numeric > b["upper"], na.rm = TRUE)
+    )
+  }
+  raw_summary <- bind_rows(rows)
+  rm(rows, raw_combined)
+  
+  # Same pivot applied to the thinned data, so "N thinned \u2260 0" is
+  # meaningful for Traction*/Latitude/Longitude too (they exist in the
+  # thinned archive, just packaged under value_type "TRAWL_TENSION"/
+  # "POSITION" there). SCALE is deliberately excluded from thinning
+  # entirely (per poseidat_thin()), so it will correctly show 0.
+  thin_scalar <- thin_v |>
+    filter(!value_type %in% c("POSITION", "TRAWL_TENSION", "SCALE"),
+           !is.na(value_numeric),
+           !grepl("TEMP", value_type, ignore.case = TRUE)) |>
+    select(device_id, value_type, datetime, value_numeric)
+  
+  thin_combined <- bind_rows(thin_scalar, extra_pivoted_channels(thin_v))
+  rm(thin_scalar)
+  
+  thin_summary <- thin_combined |>
+    group_by(device_id, value_type) |>
+    summarise(n_thinned_nonzero = sum(value_numeric != 0, na.rm = TRUE),
+              .groups = "drop")
+  
+  raw_summary |>
+    left_join(thin_summary, by = c("device_id", "value_type")) |>
+    mutate(n_thinned_nonzero = tidyr::replace_na(n_thinned_nonzero, 0)) |>
+    left_join(.poseidat_device_labels(), by = "device_id") |>
+    mutate(
+      sensor = dplyr::coalesce(
+        device_label,
+        sprintf("...%s", substr(device_id, pmax(1, nchar(device_id) - 5), nchar(device_id)))
+      )
+    ) |>
+    dplyr::select(sensor, value_type, first_obs, last_obs,
+                  n_raw, n_raw_nonzero, n_outliers, n_thinned_nonzero) |>
+    arrange(value_type, sensor)
+}
+
+render_table <- function(tbl) {
+  # knitr::kable() piped through pandoc has no real column-width control
+  # for Word output -- pandoc's own auto-sizing sometimes guesses too
+  # narrow, wrapping dates and headers across two lines regardless of how
+  # much page width is actually available. flextable renders a genuine
+  # native Word table with explicit column widths, which fixes that.
+  #
+  # IMPORTANT: this returns a flextable object -- render it with
+  # flextable::flextable_to_rmd(), never plain print(). Inside a
+  # results='asis' chunk (which the vessel loop below uses), print()
+  # bypasses knitr's knit_print dispatch and falls back to flextable's
+  # plain-console summary text instead of an actual embedded table.
+  if (!requireNamespace("flextable", quietly = TRUE))
+    stop("Install flextable: install.packages('flextable')")
+  
+  ft <- flextable::flextable(tbl)
+  ft <- flextable::set_header_labels(
+    ft,
+    sensor            = "Sensor",
+    value_type        = "Value type",
+    first_obs         = "First obs",
+    last_obs          = "Last obs",
+    n_raw             = "N raw",
+    n_raw_nonzero     = "N raw \u2260 0",
+    n_outliers        = "N outliers",
+    n_thinned_nonzero = "N thinned \u2260 0"
+  )
+  ft <- flextable::theme_box(ft)
+  ft <- flextable::fontsize(ft, size = 8, part = "all")
+  ft <- flextable::bold(ft, part = "header")
+  ft <- flextable::align(ft, j = 5:8, align = "right", part = "all")
+  ft <- flextable::autofit(ft)
+  # Standard Letter/A4 usable width at 1" margins -- adjust if
+  # report_template.docx uses different margins.
+  flextable::fit_to_width(ft, max_width = 6.5)
+}
+
+# ---- Per-sensor histograms: kept vs outlier-removed -----------------------
+#
+# Same device/sensor scope as the table (raw scalar value_types, excluding
+# POSITION/TRAWL_TENSION, TEMPERATURE included), and the same Tukey's-fences
+# bounds. Values are pre-binned per sensor here (own loop, own bin width per
+# sensor) rather than handing raw vectors to geom_histogram() -- keeps this
+# consistent with the memory-safe per-group approach used elsewhere in this
+# report, and the result (bin counts) is tiny regardless of how much raw
+# history went into it.
+vessel_sensor_histograms <- function(raw_v, outlier_k, n_bins = 30) {
+  
+  raw_scalar <- raw_v |>
+    filter(!value_type %in% c("POSITION", "TRAWL_TENSION", "SCALE"),
+           !is.na(value_numeric),
+           !grepl("TEMP", value_type, ignore.case = TRUE)) |>
+    select(device_id, value_type, value_numeric)
+  
+  raw_combined <- bind_rows(
+    raw_scalar,
+    extra_pivoted_channels(raw_v) |> select(device_id, value_type, value_numeric)
+  )
+  rm(raw_scalar)
+  
+  groups <- distinct(raw_combined, device_id, value_type)
+  if (nrow(groups) == 0) return(list(bins = tibble(), outliers = tibble()))
+  
+  bin_list     <- vector("list", nrow(groups))
+  outlier_list <- vector("list", nrow(groups))
+  
+  for (i in seq_len(nrow(groups))) {
+    vtype <- groups$value_type[i]
+    g     <- filter(raw_combined, device_id == groups$device_id[i], value_type == vtype)
+    b     <- .bounds_for(vtype, g$value_numeric, outlier_k)
+    
+    is_out       <- g$value_numeric < b["lower"] | g$value_numeric > b["upper"]
+    kept_vals    <- g$value_numeric[!is_out]
+    outlier_vals <- g$value_numeric[is_out]
+    
+    # Bins are built from the KEPT values' own range only -- so one
+    # extreme outlier no longer stretches the bars across a huge range
+    # while itself being an invisible sliver. The outlier's actual value
+    # is kept separately below and shown as a rug mark instead, so the
+    # axis still (honestly) extends to include it, just visibly now.
+    if (length(kept_vals) > 0) {
+      rng   <- range(kept_vals, na.rm = TRUE)
+      width <- diff(rng) / n_bins
+      if (!is.finite(width) || width == 0) width <- 1   # constant-value sensor -- one wide bin
+      
+      bin_idx <- pmin(n_bins, pmax(1, floor((kept_vals - rng[1]) / width) + 1))
+      bin_mid <- rng[1] + (bin_idx - 0.5) * width
+      
+      bin_list[[i]] <- tibble(
+        device_id = groups$device_id[i], value_type = vtype,
+        bin_mid = bin_mid, width = width
+      ) |>
+        count(device_id, value_type, bin_mid, width, name = "n")
+    }
+    
+    if (length(outlier_vals) > 0) {
+      outlier_list[[i]] <- tibble(
+        device_id = groups$device_id[i], value_type = vtype,
+        value_numeric = outlier_vals
+      )
+    }
+    
+    rm(g)
+  }
+  
+  bins     <- bind_rows(bin_list)
+  outliers <- bind_rows(outlier_list)
+  rm(bin_list, outlier_list)
+  
+  # bind_rows() over an all-NULL list (e.g. a vessel with zero outliers
+  # anywhere) collapses to a schema-less empty tibble with no columns at
+  # all, which the left_join() below would then choke on -- restore the
+  # expected empty shape in that case instead.
+  if (!"device_id" %in% names(bins)) {
+    bins <- tibble(device_id = character(), value_type = character(),
+                   bin_mid = numeric(), width = numeric(), n = integer())
+  }
+  if (!"device_id" %in% names(outliers)) {
+    outliers <- tibble(device_id = character(), value_type = character(),
+                       value_numeric = numeric())
+  }
+  
+  add_labels <- function(df) {
+    df |>
+      left_join(.poseidat_device_labels(), by = "device_id") |>
+      mutate(
+        sensor = dplyr::coalesce(
+          device_label,
+          sprintf("...%s", substr(device_id, pmax(1, nchar(device_id) - 5), nchar(device_id)))
+        ),
+        facet_label = paste0(value_type, " \u2014 ", sensor)
+      )
+  }
+  
+  list(bins = add_labels(bins), outliers = add_labels(outliers))
+}
+
+plot_vessel_histograms <- function(hist_data, vessel) {
+  bins     <- hist_data$bins
+  outliers <- hist_data$outliers
+  if (nrow(bins) == 0 && nrow(outliers) == 0) return(NULL)
+  
+  n_panels <- length(unique(c(bins$facet_label, outliers$facet_label)))
+  ncol     <- min(3, n_panels)
+  
+  # Bar fill and rug colour both map to the same "status" string with the
+  # same manual scale + legend name, which makes ggplot2 merge them into
+  # one combined legend rather than two separate ones.
+  bins     <- mutate(bins,     status = "Kept")
+  outliers <- mutate(outliers, status = "Outlier (removed)")
+  status_colours <- c("Kept" = "steelblue", "Outlier (removed)" = "firebrick")
+  
+  ggplot() +
+    geom_col(data = bins, aes(x = bin_mid, y = n, width = width, fill = status)) +
+    geom_rug(data = outliers, aes(x = value_numeric, colour = status),
+             sides = "b", linewidth = 0.6, na.rm = TRUE) +
+    facet_wrap(~ facet_label, scales = "free", ncol = ncol) +
+    scale_fill_manual(values = status_colours, name = NULL) +
+    scale_colour_manual(values = status_colours, name = NULL) +
+    labs(title    = vessel,
+         subtitle = "Raw value distribution per sensor \u2014 kept (bars) vs. outliers removed (red ticks)",
+         x = NULL, y = "Count") +
+    theme_bw() +
+    theme(
+      strip.text      = element_text(face = "bold", size = 7),
+      axis.text       = element_text(size = 6),
+      plot.title      = element_text(face = "bold"),
+      legend.position = "bottom"
+    )
+}
+
+# ---- Per-vessel daily mean/SD stats, grouped into report rows -------------
+#
+# Row layout requested: one facet ROW each for
+#   Fuel        -- all FUEL_CONSUMPTION devices together (FUEL_1, FUEL_2, ...)
+#   Tow         -- TRAWL_TENSION's port/center/starboard channels together
+#   Depth       -- all DEPTH devices together
+#   Lat / Long  -- POSITION's latitude & longitude together
+# Any other value_type not covered above gets its own row too (nothing is
+# silently dropped), except TEMPERATURE-pattern sensors, which are excluded
+# entirely from the graph per request (they're still in the table above).
+#
+# TRAWL_TENSION and POSITION store their useful data in named columns rather
+# than value_numeric, so those channels are pivoted into plain value_numeric
+# rows first (same idea as poseidat_plot_overview()'s .pivot_col()).
+assign_row_group <- function(value_type) {
+  dplyr::case_when(
+    value_type == "FUEL_CONSUMPTION" ~ "Fuel",
+    value_type %in% c("Traction port", "Traction center", "Traction starboard") ~ "Tow",
+    value_type == "DEPTH" ~ "Depth",
+    value_type == "SCALE" ~ "Scale",
+    value_type %in% c("Latitude", "Longitude") ~ "Lat / Long",
+    TRUE ~ value_type
+  )
+}
+
+pivot_col <- function(df, col, new_type) {
+  if (nrow(df) == 0 || !col %in% names(df)) return(tibble())
+  shared <- intersect(c("datetime", "device_id"), names(df))
+  df |>
+    filter(!is.na(.data[[col]])) |>
+    select(all_of(shared), value_numeric = all_of(col)) |>
+    mutate(value_type = new_type)
+}
+
+# TRAWL_TENSION, POSITION and SCALE store their useful reading in named
+# columns rather than value_numeric (traction_port/center/starboard,
+# latitude/longitude, scale_weight), so they get silently dropped by any
+# !is.na(value_numeric) filter unless pivoted first. Shared by the table,
+# histograms, and the trend chart below, so all three treat these three
+# sensors the same way.
+extra_pivoted_channels <- function(raw_v) {
+  raw_trawl <- filter(raw_v, value_type == "TRAWL_TENSION")
+  raw_pos   <- filter(raw_v, value_type == "POSITION")
+  raw_scale <- filter(raw_v, value_type == "SCALE")
+  
+  bind_rows(
+    pivot_col(raw_trawl, "traction_port",      "Traction port"),
+    pivot_col(raw_trawl, "traction_center",    "Traction center"),
+    pivot_col(raw_trawl, "traction_starboard", "Traction starboard"),
+    pivot_col(raw_pos,   "latitude",           "Latitude"),
+    pivot_col(raw_pos,   "longitude",          "Longitude"),
+    pivot_col(raw_scale, "scale_weight",       "SCALE")
+  )
+}
+
+vessel_daily_stats <- function(raw_v, outlier_k) {
+  
+  raw_scalar <- raw_v |>
+    filter(!value_type %in% c("POSITION", "TRAWL_TENSION", "SCALE"),
+           !is.na(value_numeric),
+           !grepl("TEMP", value_type, ignore.case = TRUE)) |>   # exclude temperature
+    select(device_id, value_type, datetime, value_numeric)
+  
+  # SCALE stays excluded from raw_scalar above (!is.na(value_numeric)
+  # already drops it, since weight lives in scale_weight, not
+  # value_numeric) -- it comes back in via extra_pivoted_channels() below,
+  # same as Tow and Position.
+  pivoted <- extra_pivoted_channels(raw_v)
+  
+  combined <- bind_rows(raw_scalar, pivoted)
+  rm(raw_scalar, pivoted)
+  if (nrow(combined) == 0) return(tibble())
+  
+  # One device/sensor at a time -- each iteration only ever holds that
+  # sensor's own raw rows, not the whole vessel's, and only the small
+  # daily mean/SD result is kept once done with it.
+  groups     <- distinct(combined, device_id, value_type)
+  daily_list <- vector("list", nrow(groups))
+  
+  for (i in seq_len(nrow(groups))) {
+    g <- filter(combined, device_id == groups$device_id[i], value_type == groups$value_type[i])
+    b <- .bounds_for(groups$value_type[i], g$value_numeric, outlier_k)
+    g <- g[!is.na(g$value_numeric) & g$value_numeric >= b["lower"] & g$value_numeric <= b["upper"], ]
+    g$date <- as.Date(g$datetime)
+    
+    daily_list[[i]] <- g |>
+      group_by(date) |>
+      summarise(mean_value = mean(value_numeric, na.rm = TRUE),
+                sd_value   = sd(value_numeric,   na.rm = TRUE),
+                .groups    = "drop") |>
+      mutate(device_id = groups$device_id[i], value_type = groups$value_type[i])
+  }
+  daily <- bind_rows(daily_list)
+  rm(daily_list, combined, groups)
+  if (nrow(daily) == 0) return(daily)
+  
+  known_groups <- c("Fuel", "Tow", "Depth", "Scale", "Lat / Long")
+  
+  # From here on this is only one row per device/sensor/day, so the
+  # join + mutate below is cheap regardless of how much raw history went
+  # into computing it.
+  daily |>
+    mutate(row_group = assign_row_group(value_type)) |>
+    left_join(.poseidat_device_labels(), by = "device_id") |>
+    mutate(
+      device_short = dplyr::coalesce(
+        device_label,
+        sprintf("...%s", substr(device_id, pmax(1, nchar(device_id) - 5), nchar(device_id)))
+      ),
+      # Series (colour) within each row: device label for Fuel/Depth/other,
+      # "device (channel)" for Tow, and the value_type itself for Lat/Long
+      # (folding in the device label too if more than one GPS device).
+      series_label = dplyr::case_when(
+        row_group == "Tow"        ~ paste0(device_short, " (", sub("Traction ", "", value_type), ")"),
+        row_group == "Lat / Long" ~ value_type,
+        TRUE                      ~ device_short
+      )
+    ) |>
+    mutate(row_group = factor(
+      row_group,
+      levels = c(known_groups, sort(setdiff(unique(row_group), known_groups)))
+    ))
+}
+
+plot_vessel_daily <- function(daily_stats, vessel) {
+  if (nrow(daily_stats) == 0) return(NULL)
+  if (!requireNamespace("patchwork", quietly = TRUE))
+    stop("Install patchwork: install.packages('patchwork')")
+  
+  # One tick + one thin vertical guide line per calendar month present --
+  # shared across every row's own plot so the months still line up
+  # vertically once stacked.
+  month_starts <- seq(as.Date(format(min(daily_stats$date), "%Y-%m-01")),
+                      as.Date(format(max(daily_stats$date), "%Y-%m-01")),
+                      by = "1 month")
+  
+  # Only the row_groups actually present, in the same Fuel/Tow/Depth/
+  # Lat-Long-then-others order used before.
+  row_groups <- levels(daily_stats$row_group)
+  row_groups <- row_groups[row_groups %in% as.character(unique(daily_stats$row_group))]
+  
+  # One self-contained plot per row, each with its own colour/fill scale
+  # and its own legend (scoped to just that row's series -- colours are
+  # otherwise untouched, still ggplot's default discrete palette). Only
+  # the bottom-most row keeps x-axis date labels, matching how the single
+  # shared-facet version only showed them once.
+  n     <- length(row_groups)
+  plots <- vector("list", n)
+  
+  for (i in seq_along(row_groups)) {
+    d <- filter(daily_stats, row_group == row_groups[i])
+    show_x_axis <- (i == n)
+    
+    plots[[i]] <- ggplot(d, aes(x = date, y = mean_value, colour = series_label)) +
+      geom_vline(xintercept = month_starts, linewidth = 0.2, colour = "grey70") +
+      geom_ribbon(aes(ymin = mean_value - sd_value, ymax = mean_value + sd_value,
+                      fill = series_label),
+                  alpha = 0.12, colour = NA, na.rm = TRUE) +
+      geom_line(linewidth = 0.4, na.rm = TRUE) +
+      geom_point(size = 0.6, na.rm = TRUE) +
+      scale_x_date(breaks = month_starts, date_labels = "%b %Y") +
+      expand_limits(y = 0) +
+      labs(subtitle = row_groups[i], x = NULL, y = NULL, colour = NULL, fill = NULL) +
+      theme_bw() +
+      theme(
+        plot.subtitle   = element_text(face = "bold", size = 8),
+        axis.text.x     = if (show_x_axis) element_text(angle = 45, hjust = 1, size = 7) else element_blank(),
+        axis.ticks.x    = if (show_x_axis) element_line() else element_blank(),
+        legend.position = "right",
+        legend.title    = element_blank(),
+        legend.text     = element_text(size = 7),
+        legend.key.size = grid::unit(0.35, "cm")
+      )
+  }
+  
+  # Stack vertically, each row keeping its own legend to the right (no
+  # guides = "collect", so patchwork leaves them separate).
+  combined <- plots[[1]]
+  if (n > 1) {
+    for (i in 2:n) combined <- combined / plots[[i]]
+  }
+  
+  combined +
+    patchwork::plot_annotation(
+      title    = vessel,
+      subtitle = "Daily mean \u00b1 SD, outliers and temperature sensors excluded",
+      theme    = theme(plot.title = element_text(face = "bold"))
+    )
+}
+
+# ---- Fleet overview: daily mean +/- SD per sensor x vessel -----------------
+#
+# Same daily-aggregation idea as vessel_daily_stats() (per-vessel pages),
+# just pooled differently: every device of a kind on a vessel is combined
+# into ONE series (all fuel devices -> "Fuel consumption", all three
+# TRAWL_TENSION channels -> "Towing force", etc.) instead of kept as
+# separate coloured lines -- so each (sensor, vessel) grid cell is a single
+# line + SD ribbon, no legend needed. Same outlier rule as the rest of the
+# report (Latitude/Longitude exempted).
+#
+# NOTE: this re-reads every vessel's raw data via .poseidat_load_report_raw()
+# a second time (the per-vessel pages further down read it again for their
+# own table/chart/histograms) -- roughly doubles total I/O for the whole
+# report. Each vessel's raw data is still discarded immediately after
+# contributing its rows here, so peak memory stays bounded; it's purely an
+# extra read pass, not an extra memory cost.
+FLEET_SENSOR_ORDER <- c("Fuel consumption", "Towing force", "Depth", "Scale",
+                        "Latitude", "Longitude")
+
+FLEET_SUM_ACROSS_DEVICES <- c("Fuel consumption", "Towing force", "Depth", "Scale")
+
+# Shared by fleet_sensor_daily() and fleet_sensor_debug() -- builds the
+# combined (Fuel/Tow/Depth/Scale/Lat/Long) tibble for one vessel's raw
+# data, with outliers removed per (device_id, value_type) SEPARATELY --
+# i.e. the same granularity vessel_daily_stats() already uses on the
+# per-vessel pages. This matters: pooling every fuel device together
+# BEFORE computing outlier bounds means a device with a genuinely
+# different range (e.g. one much busier engine) gets judged against a
+# distribution dominated by its quieter siblings, and its legitimate high
+# readings get discarded as "outliers" before they're ever aggregated --
+# which is exactly what was happening to FUEL_2 on Willem Jacob.
+.fleet_vessel_kept <- function(raw_v, outlier_k) {
+  
+  raw_scalar <- raw_v |>
+    filter(value_type %in% c("FUEL_CONSUMPTION", "DEPTH"), !is.na(value_numeric)) |>
+    select(device_id, value_type, datetime, value_numeric)
+  
+  combined <- bind_rows(
+    raw_scalar,
+    extra_pivoted_channels(raw_v) |> select(device_id, value_type, datetime, value_numeric)
+  ) |>
+    mutate(sensor = dplyr::case_when(
+      value_type == "FUEL_CONSUMPTION" ~ "Fuel consumption",
+      value_type %in% c("Traction port", "Traction center", "Traction starboard") ~ "Towing force",
+      value_type == "DEPTH"     ~ "Depth",
+      value_type == "SCALE"     ~ "Scale",
+      value_type == "Latitude"  ~ "Latitude",
+      value_type == "Longitude" ~ "Longitude",
+      TRUE ~ NA_character_
+    )) |>
+    filter(!is.na(sensor))
+  
+  if (nrow(combined) == 0) return(tibble())
+  
+  groups    <- distinct(combined, device_id, value_type)
+  kept_list <- vector("list", nrow(groups))
+  
+  for (i in seq_len(nrow(groups))) {
+    gi <- combined[combined$device_id == groups$device_id[i] &
+                     combined$value_type == groups$value_type[i], ]
+    b  <- .bounds_for(gi$sensor[1], gi$value_numeric, outlier_k)
+    kept_list[[i]] <- gi[!is.na(gi$value_numeric) &
+                           gi$value_numeric >= b["lower"] &
+                           gi$value_numeric <= b["upper"], ]
+  }
+  
+  kept <- bind_rows(kept_list)
+  rm(kept_list)
+  kept$date <- as.Date(kept$datetime)
+  kept
+}
+
+fleet_sensor_daily <- function(vessels, start_date, end_date, outlier_k) {
+  
+  rows <- vector("list", length(vessels))
+  
+  for (v in seq_along(vessels)) {
+    vessel <- vessels[v]
+    raw_v  <- .poseidat_load_report_raw(vessel, start_date, end_date)
+    if (nrow(raw_v) == 0) { rows[[v]] <- tibble(); next }
+    
+    kept <- .fleet_vessel_kept(raw_v, outlier_k)
+    if (nrow(kept) == 0) { rows[[v]] <- tibble(); rm(raw_v, kept); next }
+    
+    sensors     <- unique(kept$sensor)
+    vessel_rows <- vector("list", length(sensors))
+    
+    for (s in seq_along(sensors)) {
+      gs <- kept[kept$sensor == sensors[s], ]
+      
+      if (sensors[s] %in% FLEET_SUM_ACROSS_DEVICES) {
+        # Each device's own daily mean first (already outlier-filtered
+        # per device above), THEN summed across devices -- "add before
+        # averaging". For Towing force this also naturally handles the
+        # port/center/starboard channels (they share a device_id, so
+        # they land in that device's own mean first; a second physical
+        # tension device, if one exists, gets summed in separately).
+        # Combined SD assumes devices are roughly independent:
+        # Var(sum) = sum(Var), so SD = sqrt(sum(SD^2)).
+        per_device_daily <- gs |>
+          group_by(device_id, date) |>
+          summarise(device_mean = mean(value_numeric, na.rm = TRUE),
+                    device_sd   = sd(value_numeric,   na.rm = TRUE),
+                    .groups = "drop")
+        
+        vessel_rows[[s]] <- per_device_daily |>
+          group_by(date) |>
+          summarise(mean_value = sum(device_mean, na.rm = TRUE),
+                    sd_value   = sqrt(sum(device_sd^2, na.rm = TRUE)),
+                    .groups    = "drop") |>
+          mutate(sensor = sensors[s])
+        
+        rm(per_device_daily)
+      } else {
+        vessel_rows[[s]] <- gs |>
+          group_by(date) |>
+          summarise(mean_value = mean(value_numeric, na.rm = TRUE),
+                    sd_value   = sd(value_numeric,   na.rm = TRUE),
+                    .groups    = "drop") |>
+          mutate(sensor = sensors[s])
+      }
+    }
+    
+    rows[[v]] <- bind_rows(vessel_rows) |> mutate(vessel = vessel)
+    rm(raw_v, kept, vessel_rows)
+    gc(FALSE)
+  }
+  
+  bind_rows(rows) |>
+    mutate(sensor = factor(sensor, levels = intersect(FLEET_SENSOR_ORDER, unique(sensor))))
+}
+
+plot_fleet_overview <- function(daily) {
+  if (nrow(daily) == 0) return(NULL)
+  
+  month_starts <- seq(as.Date(format(min(daily$date), "%Y-%m-01")),
+                      as.Date(format(max(daily$date), "%Y-%m-01")),
+                      by = "1 month")
+  
+  ggplot(daily, aes(x = date, y = mean_value)) +
+    geom_vline(xintercept = month_starts, linewidth = 0.15, colour = "grey80") +
+    geom_ribbon(aes(ymin = mean_value - sd_value, ymax = mean_value + sd_value),
+                alpha = 0.15, fill = "steelblue", na.rm = TRUE) +
+    geom_line(colour = "steelblue", linewidth = 0.3, na.rm = TRUE) +
+    facet_grid(sensor ~ vessel, scales = "free_y") +
+    scale_x_date(breaks = month_starts, date_labels = "%b") +
+    expand_limits(y = 0) +
+    labs(title    = "Fleet overview: daily mean \u00b1 SD by sensor and vessel",
+         subtitle = "Outliers removed; fuel/tow/depth/scale pooled across all devices per vessel",
+         x = NULL, y = NULL) +
+    theme_bw() +
+    theme(
+      strip.text.y = element_text(face = "bold", size = 7, angle = 0),
+      strip.text.x = element_text(face = "bold", size = 7),
+      axis.text.x  = element_text(angle = 45, hjust = 1, size = 5),
+      axis.text.y  = element_text(size = 6),
+      plot.title   = element_text(face = "bold")
+    )
+}
+
+# ---- Diagnostic: per-device daily values alongside the combined value ----
+#
+# Same computation path as fleet_sensor_daily() (same raw scoping, same
+# pivoting, same outlier bounds, same sum-vs-average rule per sensor), but
+# returns the per-device daily mean/SD right next to the final combined
+# value for that day, instead of only the final value. One row per
+# (sensor, device, day); final_mean/final_sd repeat across every device
+# sharing that sensor/day -- for "summed" sensors, final_mean should equal
+# the sum of device_mean across the rows sharing that sensor/date.
+fleet_sensor_debug <- function(vessel, start_date = NULL, end_date = NULL, outlier_k = 3) {
+  
+  raw_v <- .poseidat_load_report_raw(vessel, start_date, end_date)
+  if (nrow(raw_v) == 0) { message("No raw data for this vessel/period"); return(tibble()) }
+  
+  kept <- .fleet_vessel_kept(raw_v, outlier_k)
+  if (nrow(kept) == 0) { message("No matching sensor data"); return(tibble()) }
+  
+  sensors <- unique(kept$sensor)
+  out     <- vector("list", length(sensors))
+  
+  for (s in seq_along(sensors)) {
+    gs <- kept[kept$sensor == sensors[s], ]
+    
+    per_device_daily <- gs |>
+      group_by(device_id, date) |>
+      summarise(device_mean = mean(value_numeric, na.rm = TRUE),
+                device_sd   = sd(value_numeric,   na.rm = TRUE),
+                n_raw       = dplyr::n(),
+                .groups     = "drop")
+    
+    if (sensors[s] %in% FLEET_SUM_ACROSS_DEVICES) {
+      final_daily <- per_device_daily |>
+        group_by(date) |>
+        summarise(final_mean = sum(device_mean, na.rm = TRUE),
+                  final_sd   = sqrt(sum(device_sd^2, na.rm = TRUE)),
+                  n_devices  = dplyr::n(),
+                  .groups    = "drop")
+      method <- "summed"
+    } else {
+      final_daily <- gs |>
+        group_by(date) |>
+        summarise(final_mean = mean(value_numeric, na.rm = TRUE),
+                  final_sd   = sd(value_numeric,   na.rm = TRUE),
+                  n_devices  = dplyr::n_distinct(device_id),
+                  .groups    = "drop")
+      method <- "averaged"
+    }
+    
+    out[[s]] <- per_device_daily |>
+      left_join(final_daily, by = "date") |>
+      mutate(sensor = sensors[s], combine_method = method, vessel = vessel)
+  }
+  
+  bind_rows(out) |>
+    left_join(.poseidat_device_labels(), by = "device_id") |>
+    mutate(device_label = dplyr::coalesce(
+      device_label,
+      sprintf("...%s", substr(device_id, pmax(1, nchar(device_id) - 5), nchar(device_id)))
+    )) |>
+    dplyr::select(vessel, sensor, date, device_id, device_label, combine_method,
+                  n_raw, device_mean, device_sd, n_devices, final_mean, final_sd) |>
+    arrange(sensor, date, device_id)
+}

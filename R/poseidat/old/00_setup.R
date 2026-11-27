@@ -108,7 +108,8 @@ config <- list(
   onedrive_base = onedrive_base,
   
   # API settings
-  base_url = "https://poseidat-journal-tst.m-catch.com/api/v1",
+  base_url = "https://api.dbmatic.eu/api/v1",
+  # base_url = "https://poseidat-journal-tst.m-catch.com/api/v1",
   token_env_var = "POSEIDAT_TOKEN",
   
   # Data paths (relative to OneDrive base)
@@ -137,7 +138,7 @@ cat("  Data will be stored in OneDrive:", onedrive_base, "\n\n")
 # Check bearer token setup ----
 check_token_setup <- function() {
   token <- Sys.getenv("POSEIDAT_TOKEN")
-  
+
   if (token == "") {
     cat("⚠ WARNING: POSEIDAT_TOKEN not found!\n\n")
     cat("Please set up your bearer token:\n")
