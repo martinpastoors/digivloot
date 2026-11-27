@@ -2,6 +2,7 @@
 # Read VAF files
 #
 # 22/11/2025 first coding
+# 13/08/2026 now with new file structure for fuel files
 # ==============================================================================
 
 # devtools::install_github("alastairrushworth/inspectdf")
@@ -9,8 +10,11 @@
 library(tidyverse)
 library(lubridate)
 library(patchwork)
+library(sf)
+library(devtools)
 
-rm(list=ls())
+# devtools::install_github("nielshintzen/vmstools/vmstools/")
+# library(vmstools)
 
 source("../FLYSHOOT/r/FLYSHOOT utils.R")
 
@@ -131,6 +135,7 @@ if(!is_empty(filelist)){
                  stringsAsFactors = FALSE)  %>%
           lowcase() %>%
           mutate(
+            trip        = i, 
             filename    = basename(filelist[i]),
             vessel      = myvessel, 
             timestamp   = lubridate::ymd_hms(ts),
@@ -239,6 +244,17 @@ ggplot() +
   coord_sf(xlim=c(0.55,0.66), ylim=c(50.53, 50.57))
 
 
+tmp <- gps_sf %>% 
+  ungroup() %>% 
+  sf::st_drop_geometry() %>% 
+  group_by(trip) %>% 
+  mutate(activity2 = ifelse(row_number() < 3000, activity2, NA_character_)) %>% 
+  dplyr::select(trip, ts, lat, lon, activity2) %>% mutate(vessel = "VESS1", gear = "SSC") 
+
+# sum(!is.na(tmp$activity2))
+
+save(tmp, file="C:/Users/MartinPastoors/Martin Pastoors/FLYSHOOT - General/tripdata/SCH99/CIBBRiNA/flyshoot.RData")
+
 # speed over time
 p1 <- 
   gps_sf %>% 
@@ -285,7 +301,8 @@ p1 <-
 # Fuel consumption
 p2 <- 
   gps_sf %>% 
-  filter(timestamp >= ymd_hms(time1), timestamp <= ymd_hms(time2)) %>% 
+  # filter(timestamp >= ymd_hms(time1), timestamp <= ymd_hms(time2)) %>% 
+  filter(trip == 1) %>% 
   mutate(
     fuel_rate_smooth = zoo::rollmean(fuel_rate, k = 10, fill = "extend", align = "center")  
   ) %>% 
